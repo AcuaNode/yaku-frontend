@@ -4,7 +4,7 @@ import i18next from 'i18next'
 import type { LoginCredentials, RegisterCredentials } from '../domain/auth/Auth'
 import { authService } from '../infrastructure/auth/authService'
 import { useAuthContext } from '../context/AuthContext'
-import { setToken, clearTokens } from '../utils/token'
+import { clearTokens } from '../utils/token'
 
 export function useAuth() {
   const [loading, setLoading] = useState(false)
@@ -22,8 +22,6 @@ export function useAuth() {
     try {
       const user = await authService.login(credentials)
       setUser(user)
-      // TODO (backend): setToken(response.accessToken); setRefreshToken(response.refreshToken)
-      setToken('mock-token')
       navigate('/dashboard')
     } catch {
       setError(i18next.t('login.errorCredentials'))
@@ -38,13 +36,19 @@ export function useAuth() {
       setError(i18next.t('register.errorRequired'))
       return
     }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (username.length < 4 || username.length > 20) {
+      setError('El usuario debe tener entre 4 y 20 caracteres')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
       const user = await authService.register(data)
       setUser(user)
-      // TODO (backend): setToken(response.accessToken)
-      setToken('mock-token')
       navigate('/dashboard')
     } catch {
       setError(i18next.t('register.errorRegister'))

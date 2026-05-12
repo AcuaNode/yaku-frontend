@@ -1,34 +1,78 @@
+import { http } from '../../lib/http'
+import { API_ENDPOINTS } from '../../config/api.config'
 import type { Operador, OperadorStats } from '../../domain/operador/Operador'
 
-const mockOperadores: Operador[] = [
-  { id: 'op-1', userId: '#USR-8902', nombre: 'Carlos',   apellido: 'Rodriguez', email: 'c.rodriguez@yakumail.com', rol: 'OPERATOR', estanqueAsignado: 'Finca San José',   fechaRegistro: '12 Oct 2023', avatarColor: '#06b6d4' },
-  { id: 'op-2', userId: '#USR-7721', nombre: 'Ana',      apellido: 'Martinez',  email: 'ana.mtz@yakumail.com',     rol: 'OPERATOR', estanqueAsignado: 'Finca El Dorado', fechaRegistro: '05 Nov 2023', avatarColor: '#1e3a5f' },
-  { id: 'op-3', userId: '#USR-6650', nombre: 'Luis',     apellido: 'García',    email: 'lgarcia@yakumail.com',     rol: 'OPERATOR', estanqueAsignado: 'Finca San José',   fechaRegistro: '20 Nov 2023', avatarColor: '#0d9488' },
-  { id: 'op-4', userId: '#USR-5510', nombre: 'María',    apellido: 'López',     email: 'm.lopez@yakumail.com',     rol: 'OPERATOR', estanqueAsignado: 'Finca El Dorado', fechaRegistro: '03 Dic 2023', avatarColor: '#7c3aed' },
-  { id: 'op-5', userId: '#USR-4401', nombre: 'Jorge',    apellido: 'Ramírez',   email: 'j.ramirez@yakumail.com',   rol: 'OPERATOR', estanqueAsignado: 'Finca Norte',     fechaRegistro: '14 Ene 2024', avatarColor: '#ea580c' },
-  { id: 'op-6', userId: '#USR-3320', nombre: 'Sofía',    apellido: 'Torres',    email: 's.torres@yakumail.com',    rol: 'ADMIN',    estanqueAsignado: 'Todas',           fechaRegistro: '20 Ene 2024', avatarColor: '#db2777' },
-]
+interface UserResource {
+  id: number
+  username: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  createdAt?: string
+}
 
-const FARM_TOKEN = 'AQUA-7729-TRT'
+interface FarmResource {
+  id: number
+  name: string
+  ownerId: number
+  farmToken: string
+  address: string
+}
+
+const AVATAR_COLORS = ['#06b6d4', '#1e3a5f', '#0d9488', '#7c3aed', '#ea580c', '#db2777']
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+async function fetchUsers(): Promise<UserResource[]> {
+  const { data } = await http.get<UserResource[] | unknown>(API_ENDPOINTS.users.base)
+  return Array.isArray(data) ? (data as UserResource[]) : []
+}
+
+async function fetchFarms(): Promise<FarmResource[]> {
+  const { data } = await http.get<FarmResource[]>(API_ENDPOINTS.farms.base)
+  return Array.isArray(data) ? data : []
+}
 
 export const operadorService = {
   getAll: async (): Promise<Operador[]> => {
-    // TODO: GET /api/operadores
-    return mockOperadores
+    const users = await fetchUsers()
+    return users
+      .filter(u => u.role === 'OPERATOR')
+      .map((u, i) => ({
+        id:               String(u.id),
+        userId:           `#USR-${String(u.id).padStart(4, '0')}`,
+        nombre:           u.firstName ?? '',
+        apellido:         u.lastName ?? '',
+        email:            u.email,
+        rol:              'OPERATOR' as const,
+        estanqueAsignado: '',
+        fechaRegistro:    u.createdAt ? formatDate(u.createdAt) : '—',
+        avatarColor:      AVATAR_COLORS[i % AVATAR_COLORS.length],
+      }))
   },
 
   getStats: async (): Promise<OperadorStats> => {
-    // TODO: GET /api/operadores/stats
-    return { total: 24, crecimientoMensual: 2 }
+    const users = await fetchUsers()
+    const operators = users.filter(u => u.role === 'OPERATOR')
+    return {
+      total:              operators.length,
+      crecimientoMensual: 0,
+    }
   },
 
   getFarmToken: async (): Promise<string> => {
-    // TODO: GET /api/operadores/farm-token
-    return FARM_TOKEN
+    const farms = await fetchFarms()
+    return farms[0]?.farmToken ?? ''
   },
 
   actualizarToken: async (): Promise<string> => {
-    // TODO: POST /api/operadores/farm-token/refresh
-    return 'AQUA-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 5).toUpperCase()
+    const farms = await fetchFarms()
+    const farm = farms[0]
+    if (!farm) throw new Error('No se encontró ninguna granja')
+    const { data } = await http.patch<FarmResource>(API_ENDPOINTS.farms.regenerateToken(farm.id))
+    return data.farmToken ?? ''
   },
 }

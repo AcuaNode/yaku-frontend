@@ -2,37 +2,42 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localho
 
 export const API_ENDPOINTS = {
   auth: {
-    login:    '/auth/login',
-    register: '/auth/register',
-    logout:   '/auth/logout',
-    refresh:  '/auth/refresh',
-    me:       '/auth/me',
+    signin: '/v1/users/signin',
+    signup: '/v1/users/signup',
   },
-  estanques: {
-    base:     '/estanques',
-    list:     '/estanques/list',
-    lecturas: '/estanques/lecturas',
-    stats:    '/estanques/stats',
+  users: {
+    base:           '/v1/users',
+    byUsername:     '/v1/users/by-username',
+    availableRoles: '/v1/users/available-roles',
+    notifications:  (userId: number) => `/v1/users/${userId}/notifications`,
+    deviceTokens:   (userId: number) => `/v1/users/${userId}/device-tokens`,
   },
-  equipos: {
-    base:  '/equipos',
-    stats: '/equipos/stats',
+  farms: {
+    base:            '/v1/farms',
+    byId:            (id: number) => `/v1/farms/${id}`,
+    regenerateToken: (id: number) => `/v1/farms/${id}/token`,
   },
-  operadores: {
-    base:       '/operadores',
-    stats:      '/operadores/stats',
-    farmToken:  '/operadores/farm-token',
-    refreshToken: '/operadores/farm-token/refresh',
+  ponds: {
+    base:      '/v1/ponds',
+    byId:      (id: number) => `/v1/ponds/${id}`,
+    byFarm:    (farmId: number) => `/v1/ponds/farm/${farmId}`,
+    assign:    (pondId: number) => `/v1/ponds/${pondId}/assignments`,
+    deassign:  (pondId: number, operatorId: number) => `/v1/ponds/${pondId}/deassignments/${operatorId}`,
   },
-  notificaciones: {
-    base:         '/notificaciones',
-    markAllRead:  '/notificaciones/mark-all-read',
+  telemetry: {
+    status:     (pondId: number) => `/v1/telemetry/ponds/${pondId}/status`,
+    historical: (pondId: number) => `/v1/telemetry/ponds/${pondId}/historical`,
+    ingest:     '/v1/telemetry/manual-ingest',
   },
-  sensores: {
-    base:  '/sensores',
-    stats: '/sensores/stats',
+  equipment: {
+    base:  '/v1/equipment',
+    byId:  (id: number) => `/v1/equipment/${id}`,
+    link:  (equipmentId: number, pondId: number) => `/v1/equipment/${equipmentId}/link/${pondId}`,
   },
-  alertas: {
-    base: '/alertas',
+  subscriptions: {
+    byUser: (userId: number) => `/v1/subscriptions/${userId}`,
+  },
+  plans: {
+    base: '/v1/plans',
   },
 } as const

@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
+import { useAuthContext } from '../context/AuthContext'
+import { granjaService } from '../infrastructure/granja/granjaService'
+import { http } from '../lib/http'
+import { API_ENDPOINTS } from '../config/api.config'
+import { getUserId } from '../utils/token'
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -69,27 +74,87 @@ function LangSwitcherLight() {
   )
 }
 
+interface SubscriptionResource {
+  id?: number
+  planId?: number
+  planName?: string
+  plan?: { id?: number; name?: string; price?: number; currency?: string; maxPonds?: number; durationInDays?: number }
+  status: string
+  startDate?: string
+  endDate?: string
+}
+
+interface PlanResource {
+  id: number
+  name: string
+  price: number
+  currency: string
+  maxPonds: number
+  durationInDays: number
+}
+
+interface ResolvedSuscripcion {
+  planName: string
+  price: number
+  currency: string
+  maxPonds: number
+  status: string
+  endDate: string
+}
+
 export default function ConfiguracionPage() {
   const { t } = useTranslation()
+  const { user } = useAuthContext()
   const [passwordActual, setPasswordActual] = useState('')
   const [passwordNueva, setPasswordNueva] = useState('')
   const [passwordConfirmar, setPasswordConfirmar] = useState('')
   const [modoOscuro, setModoOscuro] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const [granjaId, setGranjaId] = useState<string>('—')
+  const [suscripcion, setSuscripcion] = useState<ResolvedSuscripcion | null>(null)
+
+  useEffect(() => {
+    granjaService.getAll().then(granjas => {
+      if (granjas.length > 0) setGranjaId(`#GRANJA-${granjas[0].id}`)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const userId = getUserId()
+    if (!userId) return
+    Promise.all([
+      http.get<SubscriptionResource>(API_ENDPOINTS.subscriptions.byUser(userId)).catch(() => null),
+      http.get<PlanResource[]>(API_ENDPOINTS.plans.base).catch(() => ({ data: [] as PlanResource[] })),
+    ]).then(([subRes, plansRes]) => {
+      if (!subRes) return
+      const sub = subRes.data
+      const plans: PlanResource[] = plansRes?.data ?? []
+      const planId = sub.planId ?? sub.plan?.id
+      const matchedPlan = plans.find(p => p.id === planId)
+      const planName = matchedPlan?.name ?? sub.planName ?? sub.plan?.name ?? '—'
+      const price    = matchedPlan?.price    ?? sub.plan?.price    ?? 0
+      const currency = matchedPlan?.currency ?? sub.plan?.currency ?? 'USD'
+      const maxPonds = matchedPlan?.maxPonds ?? sub.plan?.maxPonds ?? 0
+      setSuscripcion({ planName, price, currency, maxPonds, status: sub.status, endDate: sub.endDate ?? '' })
+    })
+  }, [])
+
+  const fullName  = user ? `${user.firstName} ${user.lastName}`.trim() : '—'
+  const initials  = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : '?'
+  const roleLabel = user?.role === 'ADMIN' ? t('configuracion.adminValue') : user?.role === 'OPERADOR' ? 'Operador' : user?.role ?? '—'
 
   function handleActualizarPassword() {
-    // TODO: PATCH /api/auth/change-password
     setSuccessMsg(t('configuracion.passwordUpdated'))
     setPasswordActual(''); setPasswordNueva(''); setPasswordConfirmar('')
     setTimeout(() => setSuccessMsg(''), 3000)
   }
 
   const profileFields = [
-    { label: t('configuracion.fullName'),   value: 'Carlos Alberto Rodriguez Santos', color: '#0f172a' },
-    { label: t('configuracion.email'),       value: 'c.rodriguez@yakufarms.com',       color: '#0f172a' },
-    { label: t('configuracion.farmId'),      value: '#FINCA-SJ-2024',                  color: '#0d9488' },
-    { label: t('configuracion.userRole'),    value: t('configuracion.adminValue'),      color: '#0f172a' },
+    { label: t('configuracion.fullName'),   value: fullName,              color: '#0f172a' },
+    { label: t('configuracion.email'),       value: user?.email ?? '—',    color: '#0f172a' },
+    { label: t('configuracion.farmId'),      value: granjaId,              color: '#0d9488' },
+    { label: t('configuracion.userRole'),    value: roleLabel,             color: '#0f172a' },
   ]
 
   return (
@@ -111,7 +176,7 @@ export default function ConfiguracionPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <div style={{ width: '72px', height: '72px', borderRadius: '12px', backgroundColor: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800, color: '#fff' }}>
-                    CR
+                    {initials}
                   </div>
                   <button style={{ position: 'absolute', bottom: '-6px', right: '-6px', width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#0f172a', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <svg width="11" height="11" fill="none" stroke="#fff" viewBox="0 0 24 24">
@@ -120,7 +185,7 @@ export default function ConfiguracionPage() {
                   </button>
                 </div>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>Carlos Rodriguez</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>{fullName}</div>
                   <span style={{ backgroundColor: '#ccfbf1', color: '#0d9488', fontSize: '10px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', letterSpacing: '0.06em' }}>
                     {t('configuracion.adminRole')}
                   </span>
@@ -162,13 +227,24 @@ export default function ConfiguracionPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#fff', marginBottom: '10px' }}>Premium Gold</div>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#fff', marginBottom: '6px' }}>
+                  {suscripcion ? suscripcion.planName : '—'}
+                </div>
+                {suscripcion && suscripcion.price > 0 && (
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>
+                    {suscripcion.price} {suscripcion.currency}/mo · hasta {suscripcion.maxPonds} estanques
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#fff' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                    {t('configuracion.active')}
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: suscripcion?.status === 'ACTIVE' ? '#22c55e' : '#94a3b8', display: 'inline-block' }} />
+                    {suscripcion ? (suscripcion.status === 'ACTIVE' ? t('configuracion.active') : suscripcion.status) : '—'}
                   </span>
-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{t('configuracion.renewal')} 12 Oct, 2024</span>
+                  {suscripcion?.endDate && (
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                      {t('configuracion.renewal')} {new Date(suscripcion.endDate).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  )}
                 </div>
               </div>
               <button style={{ backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}

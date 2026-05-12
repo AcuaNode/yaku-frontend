@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { User } from '../domain/auth/Auth'
-import { getToken, clearTokens } from '../utils/token'
+import { getToken, clearTokens, getStoredUser } from '../utils/token'
 
 interface AuthContextValue {
   user: User | null
@@ -17,9 +17,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = getToken()
     if (!token) return
-    // TODO (backend): GET /auth/me → setUser(data)
-    // const { data } = await http.get(API_ENDPOINTS.auth.me)
-    // setUser(data)
+    const stored = getStoredUser()
+    if (stored) setUser(stored)
   }, [])
 
   function logout() {

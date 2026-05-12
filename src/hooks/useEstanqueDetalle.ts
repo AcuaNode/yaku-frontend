@@ -6,12 +6,14 @@ interface UseEstanqueDetalleReturn {
   detalle: EstanqueDetalleData | null
   loading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function useEstanqueDetalle(id: string): UseEstanqueDetalleReturn {
   const [detalle, setDetalle] = useState<EstanqueDetalleData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     async function fetchData() {
@@ -26,7 +28,7 @@ export function useEstanqueDetalle(id: string): UseEstanqueDetalleReturn {
       }
     }
     fetchData()
-  }, [id])
+  }, [id, tick])
 
-  return { detalle, loading, error }
+  return { detalle, loading, error, refetch: () => setTick(t => t + 1) }
 }

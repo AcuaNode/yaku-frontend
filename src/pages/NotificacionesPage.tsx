@@ -5,7 +5,6 @@ import { useNotificaciones } from '../hooks/useNotificaciones'
 import type { Notificacion, TipoNotificacion } from '../domain/notificacion/Notificacion'
 
 const PAGE_SIZE = 4
-const TOTAL_MOCK = 128
 
 const TIPO_CONFIG: Record<TipoNotificacion, { iconBg: string; iconColor: string; icon: React.ReactNode }> = {
   ALERTA: {
@@ -206,7 +205,7 @@ export default function NotificacionesPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', flexWrap: 'wrap', gap: '10px', borderTop: paginated.length > 0 ? '1px solid #f8fafc' : 'none' }}>
           <span style={{ fontSize: '13px', color: '#64748b' }}>
-            {t('notificaciones.showing', { count: paginated.length, total: TOTAL_MOCK })}
+            {t('notificaciones.showing', { count: paginated.length, total: filtradas.length })}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <PageBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>

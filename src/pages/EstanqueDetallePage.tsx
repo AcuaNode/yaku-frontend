@@ -5,6 +5,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import DashboardLayout from '../layouts/DashboardLayout'
 import GaugeChart from '../components/GaugeChart'
 import { useEstanqueDetalle } from '../hooks/useEstanqueDetalle'
+import { http } from '../lib/http'
+import { API_ENDPOINTS } from '../config/api.config'
 import type { EquipoAsignado, TelemetriaLectura } from '../domain/estanque/Estanque'
 
 const TIPO_STYLE: Record<string, { bg: string; color: string }> = {
@@ -54,12 +56,94 @@ function TelemetriaCard({ label, lectura }: TelemetriaCardProps) {
   )
 }
 
+interface EquipmentOption { id: number; name: string; physicalCode: string }
+interface EquipmentResource { id: number; pondId: number; type: string; status: string; name: string; physicalCode: string }
+
+interface IngestForm {
+  temperature: string
+  ph: string
+  oxygen: string
+}
+
 export default function EstanqueDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { detalle, loading } = useEstanqueDetalle(id ?? '')
+  const pondId = parseInt(id ?? '0', 10)
+  const { detalle, loading, refetch } = useEstanqueDetalle(id ?? '')
   const [historialOpen, setHistorialOpen] = useState(true)
+
+  // Modal: vincular equipo
+  const [showVincular, setShowVincular] = useState(false)
+  const [equiposDisponibles, setEquiposDisponibles] = useState<EquipmentOption[]>([])
+  const [selectedEquipo, setSelectedEquipo] = useState('')
+  const [vinculando, setVinculando] = useState(false)
+  const [errorVincular, setErrorVincular] = useState<string | null>(null)
+
+  // Modal: nuevo registro
+  const [showRegistro, setShowRegistro] = useState(false)
+  const [ingestForm, setIngestForm] = useState<IngestForm>({ temperature: '', ph: '', oxygen: '' })
+  const [ingesting, setIngesting] = useState(false)
+  const [errorIngest, setErrorIngest] = useState<string | null>(null)
+  const [successIngest, setSuccessIngest] = useState(false)
+
+  async function abrirVincular() {
+    setErrorVincular(null)
+    setSelectedEquipo('')
+    try {
+      const { data } = await http.get<EquipmentResource[]>(API_ENDPOINTS.equipment.base)
+      setEquiposDisponibles(data.filter(e => e.status === 'AVAILABLE'))
+    } catch {
+      setEquiposDisponibles([])
+    }
+    setShowVincular(true)
+  }
+
+  async function handleVincular() {
+    if (!selectedEquipo) { setErrorVincular('Selecciona un equipo'); return }
+    setVinculando(true); setErrorVincular(null)
+    try {
+      await http.post(API_ENDPOINTS.equipment.link(parseInt(selectedEquipo, 10), pondId), {})
+      setShowVincular(false)
+      refetch()
+    } catch {
+      setErrorVincular('No se pudo vincular el equipo. Intenta de nuevo.')
+    } finally {
+      setVinculando(false)
+    }
+  }
+
+  async function handleIngest() {
+    const temp = parseFloat(ingestForm.temperature)
+    const ph   = parseFloat(ingestForm.ph)
+    const o2   = parseFloat(ingestForm.oxygen)
+    if (isNaN(temp) || isNaN(ph) || isNaN(o2)) {
+      setErrorIngest('Todos los campos son requeridos y deben ser números válidos')
+      return
+    }
+    const sensors = detalle?.equipos.filter(e => e.tipo === 'SENSOR') ?? []
+    if (sensors.length === 0) {
+      setErrorIngest('Este estanque no tiene sensores vinculados. Vincula al menos un sensor antes de registrar lecturas.')
+      return
+    }
+    const sensorId = parseInt(sensors[0].id, 10)
+    setIngesting(true); setErrorIngest(null)
+    const now = new Date().toISOString()
+    try {
+      await Promise.all([
+        http.post(API_ENDPOINTS.telemetry.ingest, { sensorId, pondId, sensorType: 'TEMPERATURE', value: temp, unit: '°C',   timestamp: now }),
+        http.post(API_ENDPOINTS.telemetry.ingest, { sensorId, pondId, sensorType: 'PH',          value: ph,   unit: '',      timestamp: now }),
+        http.post(API_ENDPOINTS.telemetry.ingest, { sensorId, pondId, sensorType: 'OXYGEN',      value: o2,   unit: 'mg/L', timestamp: now }),
+      ])
+      setSuccessIngest(true)
+      setIngestForm({ temperature: '', ph: '', oxygen: '' })
+      setTimeout(() => { setSuccessIngest(false); setShowRegistro(false); refetch() }, 1500)
+    } catch {
+      setErrorIngest('No se pudo registrar la lectura. Intenta de nuevo.')
+    } finally {
+      setIngesting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -70,6 +154,15 @@ export default function EstanqueDetallePage() {
   }
 
   if (!detalle) return null
+
+  function rowEstado(temp: number, ph: number, o2: number): { text: string; bg: string; color: string } {
+    if (ph < 6.0 || ph > 9.0 || o2 < 3 || temp > 35) return { text: 'CRÍTICO', bg: '#fee2e2', color: '#ef4444' }
+    if (ph < 6.5 || ph > 8.5 || o2 < 5 || temp > 30) return { text: 'ALERTA',  bg: '#fef3c7', color: '#f59e0b' }
+    return { text: t('estanqueDetalle.optimal'), bg: '#ccfbf1', color: '#0d9488' }
+  }
+
+  const fechaInicio = detalle.historico[0]?.tiempo ?? '—'
+  const fechaFin    = detalle.historico[detalle.historico.length - 1]?.tiempo ?? '—'
 
   const tableHeaders = [
     t('estanqueDetalle.hDate'),
@@ -103,7 +196,8 @@ export default function EstanqueDetallePage() {
           <div style={{ fontSize: '13px', color: '#94a3b8' }}>ID: {detalle.pondId}</div>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
+          <button
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
@@ -112,7 +206,9 @@ export default function EstanqueDetallePage() {
             </svg>
             {t('estanqueDetalle.editPond')}
           </button>
-          <button style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0f4c35', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+          <button
+            onClick={() => { setSuccessIngest(false); setErrorIngest(null); setIngestForm({ temperature: '', ph: '', oxygen: '' }); setShowRegistro(true) }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0f4c35', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
           >
@@ -149,9 +245,9 @@ export default function EstanqueDetallePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.historicalAnalysis')}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 12px' }}>
-              <span>10/20/2023</span>
+              <span>{fechaInicio}</span>
               <span style={{ color: '#94a3b8' }}>{t('estanqueDetalle.to')}</span>
-              <span>10/27/2023</span>
+              <span>{fechaFin}</span>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
@@ -171,19 +267,27 @@ export default function EstanqueDetallePage() {
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.assignedEquipment')}</h2>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#38bdf8', fontSize: '13px', fontWeight: 600 }}>{t('estanqueDetalle.linkButton')}</button>
+            <button
+              onClick={abrirVincular}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#38bdf8', fontSize: '13px', fontWeight: 600 }}
+            >
+              {t('estanqueDetalle.linkButton')}
+            </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {detalle.equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} />)}
+            {detalle.equipos.length === 0
+              ? <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Sin equipos asignados</p>
+              : detalle.equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} />)
+            }
           </div>
         </div>
       </div>
 
       {/* Historial de Lecturas */}
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-        <button
+        <div
           onClick={() => setHistorialOpen(o => !o)}
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', cursor: 'pointer' }}
         >
           <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.readingHistory')}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -200,7 +304,7 @@ export default function EstanqueDetallePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
-        </button>
+        </div>
 
         {historialOpen && (
           <div style={{ padding: '0 24px 20px' }}>
@@ -221,7 +325,9 @@ export default function EstanqueDetallePage() {
                       <td style={{ padding: '12px', color: '#0f172a' }}>{row.pH}</td>
                       <td style={{ padding: '12px', color: '#0f172a' }}>{row.Oxígeno} mg/L</td>
                       <td style={{ padding: '12px' }}>
-                        <span style={{ backgroundColor: '#ccfbf1', color: '#0d9488', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>{t('estanqueDetalle.optimal')}</span>
+                        {(() => { const s = rowEstado(row.Temperatura, row.pH, row.Oxígeno); return (
+                          <span style={{ backgroundColor: s.bg, color: s.color, fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>{s.text}</span>
+                        )})()}
                       </td>
                     </tr>
                   ))}
@@ -231,6 +337,99 @@ export default function EstanqueDetallePage() {
           </div>
         )}
       </div>
+
+      {/* Modal: Vincular equipo */}
+      {showVincular && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.linkButton').replace('+', '').trim()}</h2>
+              <button onClick={() => setShowVincular(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '22px', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Equipo disponible</label>
+                <select
+                  value={selectedEquipo}
+                  onChange={e => setSelectedEquipo(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', color: '#334155' }}
+                >
+                  <option value="">Seleccionar equipo...</option>
+                  {equiposDisponibles.map(eq => (
+                    <option key={eq.id} value={String(eq.id)}>{eq.name} — {eq.physicalCode}</option>
+                  ))}
+                </select>
+                {equiposDisponibles.length === 0 && (
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '6px 0 0' }}>No hay equipos disponibles sin asignar.</p>
+                )}
+              </div>
+              {errorVincular && <p style={{ color: '#ef4444', fontSize: '13px', margin: 0 }}>{errorVincular}</p>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button onClick={() => setShowVincular(false)} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'transparent', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleVincular}
+                  disabled={vinculando || !selectedEquipo}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#0f4c35', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: vinculando ? 'not-allowed' : 'pointer', opacity: vinculando ? 0.7 : 1 }}
+                >
+                  {vinculando ? 'Vinculando...' : 'Vincular'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Nuevo Registro */}
+      {showRegistro && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.newRecord')}</h2>
+              <button onClick={() => setShowRegistro(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '22px', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {([
+                { key: 'temperature', label: 'Temperatura (°C)', placeholder: 'Ej: 25.5' },
+                { key: 'ph',          label: 'pH',                placeholder: 'Ej: 7.2' },
+                { key: 'oxygen',      label: 'Oxígeno (mg/L)',    placeholder: 'Ej: 6.8' },
+              ] as const).map(field => (
+                <div key={field.key}>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{field.label}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={field.placeholder}
+                    value={ingestForm[field.key]}
+                    onChange={e => setIngestForm(p => ({ ...p, [field.key]: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box', color: '#334155' }}
+                  />
+                </div>
+              ))}
+              {errorIngest && <p style={{ color: '#ef4444', fontSize: '13px', margin: 0 }}>{errorIngest}</p>}
+              {successIngest && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: '13px', borderRadius: '8px', padding: '10px 12px' }}>
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Lectura registrada correctamente.
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button onClick={() => setShowRegistro(false)} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'transparent', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleIngest}
+                  disabled={ingesting}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#0f4c35', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: ingesting ? 'not-allowed' : 'pointer', opacity: ingesting ? 0.7 : 1 }}
+                >
+                  {ingesting ? 'Guardando...' : t('common.save')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </DashboardLayout>
   )

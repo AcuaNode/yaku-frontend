@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import StatCard from '../components/StatCard'
@@ -8,6 +8,7 @@ import SensorChart from '../components/SensorChart'
 import { useEstanques } from '../hooks/useEstanques'
 import { useAlertas } from '../hooks/useAlertas'
 import { useSensores } from '../hooks/useSensores'
+import { granjaService } from '../infrastructure/granja/granjaService'
 import type { CrearGranjaDTO } from '../domain/granja/Granja'
 
 export default function DashboardPage() {
@@ -18,6 +19,25 @@ export default function DashboardPage() {
 
   const [showModal, setShowModal] = useState(false)
   const [granja, setGranja] = useState<CrearGranjaDTO>({ nombre: '', ubicacion: '' })
+  const [saving, setSaving] = useState(false)
+  const [errorGranja, setErrorGranja] = useState<string | null>(null)
+
+  useEffect(() => {
+    granjaService.tieneGranjas().then(tiene => {
+      if (!tiene) setShowModal(true)
+    }).catch(() => setShowModal(true))
+  }, [])
+
+  const activas = lecturas.filter(l => l.estado !== 'INACTIVO')
+  const optimas = activas.filter(l => l.estado === 'ÓPTIMO').length
+  const criticas = activas.filter(l => l.estado === 'CRÍTICO').length
+  const calidad = activas.length === 0
+    ? null
+    : criticas > 0
+      ? { label: t('estados.critical'), badge: t('estados.alert'), color: '#ef4444', badgeBg: '#fee2e2', badgeColor: '#ef4444' }
+      : optimas === activas.length
+        ? { label: t('dashboard.goodQuality'), badge: t('estados.optimal'), color: '#0d9488', badgeBg: '#ccfbf1', badgeColor: '#0d9488' }
+        : { label: t('dashboard.goodQuality'), badge: t('dashboard.reviewBadge'), color: '#f59e0b', badgeBg: '#fef3c7', badgeColor: '#f59e0b' }
 
   const stats = [
     {
@@ -41,18 +61,30 @@ export default function DashboardPage() {
     },
     {
       label: t('dashboard.avgQuality'),
-      valueLarge: t('dashboard.goodQuality'),
-      valueColor: '#0d9488',
-      badge: t('dashboard.optimalBadge'),
-      badgeColor: '#0d9488',
-      badgeBg: '#ccfbf1',
+      valueLarge: calidad?.label ?? '—',
+      valueColor: calidad?.color ?? '#94a3b8',
+      badge: calidad?.badge,
+      badgeColor: calidad?.badgeColor,
+      badgeBg: calidad?.badgeBg,
     },
   ]
 
-  function handleCrearGranja() {
-    // TODO: conectar con granjaService.crear(granja)
-    setShowModal(false)
-    setGranja({ nombre: '', ubicacion: '' })
+  async function handleCrearGranja() {
+    if (!granja.nombre.trim()) {
+      setErrorGranja('El nombre de la granja es requerido')
+      return
+    }
+    setSaving(true)
+    setErrorGranja(null)
+    try {
+      await granjaService.crear(granja)
+      setShowModal(false)
+      setGranja({ nombre: '', ubicacion: '' })
+    } catch {
+      setErrorGranja('No se pudo crear la granja. Intenta de nuevo.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -119,14 +151,18 @@ export default function DashboardPage() {
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box' }}
                 />
               </div>
+              {errorGranja && (
+                <p style={{ color: '#ef4444', fontSize: '13px', margin: 0 }}>{errorGranja}</p>
+              )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                 <button
                   onClick={handleCrearGranja}
-                  style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                  onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
-                  onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
+                  disabled={saving}
+                  style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                  onMouseOver={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0a3526' }}
+                  onMouseOut={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0f4c35' }}
                 >
-                  {t('dashboard.registerFarm')}
+                  {saving ? 'Guardando...' : t('dashboard.registerFarm')}
                 </button>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useEstanques } from '../hooks/useEstanques'
+import { estanqueService } from '../infrastructure/estanque/estanqueService'
 import type { EstadoEstanque } from '../domain/estanque/Estanque'
 
 const SENSOR_COLOR: Record<string, { bg: string; color: string }> = {
@@ -45,7 +46,7 @@ const DOT_COLOR: Record<EstadoEstanque, string> = {
 
 function EstadoBadge({ estado }: { estado: EstadoEstanque }) {
   const { t } = useTranslation()
-  const s = ESTADO_STYLE[estado]
+  const s = ESTADO_STYLE[estado] ?? ESTADO_STYLE['INACTIVO']
   const labelMap: Record<EstadoEstanque, string> = {
     'ÓPTIMO':   t('estados.optimal'),
     'ALERTA':   t('estados.alert'),
@@ -60,16 +61,35 @@ function EstadoBadge({ estado }: { estado: EstadoEstanque }) {
 }
 
 export default function EstanquesPage() {
-  const { listItems, stats, loading } = useEstanques()
+  const { listItems, stats, loading, refetch } = useEstanques()
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ nombre: '', tipoCultivo: 'Tilapia', capacidad: '' })
+  const [saving, setSaving] = useState(false)
+  const [errorEstanque, setErrorEstanque] = useState<string | null>(null)
 
-  function handleCrear() {
-    // TODO: conectar con estanqueService.crear(form)
-    setShowModal(false)
-    setForm({ nombre: '', tipoCultivo: 'Tilapia', capacidad: '' })
+  async function handleCrear() {
+    if (!form.nombre.trim()) {
+      setErrorEstanque('El nombre del estanque es requerido')
+      return
+    }
+    setSaving(true)
+    setErrorEstanque(null)
+    try {
+      await estanqueService.crear({
+        nombre: form.nombre,
+        species: form.tipoCultivo,
+        volume: parseFloat(form.capacidad) || 0,
+      })
+      setShowModal(false)
+      setForm({ nombre: '', tipoCultivo: 'Tilapia', capacidad: '' })
+      refetch()
+    } catch {
+      setErrorEstanque('No se pudo crear el estanque. Intenta de nuevo.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const HEADERS = [
@@ -142,7 +162,7 @@ export default function EstanquesPage() {
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button
-                          onClick={() => navigate(`/estanques/${item.id.replace('#', '')}`)}
+                          onClick={() => navigate(`/estanques/${item.id.replace(/\D/g, '')}`)}
                           style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a', backgroundColor: 'transparent', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                           onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                           onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -239,9 +259,12 @@ export default function EstanquesPage() {
               </div>
             </div>
 
+            {errorEstanque && (
+              <p style={{ color: '#ef4444', fontSize: '13px', margin: '0 28px 0', paddingBottom: '4px' }}>{errorEstanque}</p>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', padding: '16px 28px', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setErrorEstanque(null) }}
                 style={{ fontSize: '14px', fontWeight: 500, padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#64748b', cursor: 'pointer' }}
                 onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
                 onMouseOut={e => (e.currentTarget.style.color = '#64748b')}
@@ -250,11 +273,12 @@ export default function EstanquesPage() {
               </button>
               <button
                 onClick={handleCrear}
-                style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
-                onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
+                disabled={saving}
+                style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                onMouseOver={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0a3526' }}
+                onMouseOut={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0f4c35' }}
               >
-                {t('estanques.registerPond')}
+                {saving ? 'Guardando...' : t('estanques.registerPond')}
               </button>
             </div>
           </div>

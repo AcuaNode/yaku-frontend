@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import yakuLogo from '../assets/yaku-logo.png'
+import { useAuthContext } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import '../styles/dashboard.css'
 
 function NavItems({ onNav }: { onNav?: () => void }) {
@@ -75,6 +77,12 @@ export default function DashboardLayout({ children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const { user } = useAuthContext()
+  const { logout } = useAuth()
+
+  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : '—'
+  const initials = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : '?'
+  const roleLabel = user?.role === 'ADMIN' ? 'Administrador' : user?.role === 'OPERADOR' ? 'Operador' : (user?.role ?? '—')
 
   const logoBlock = (
     <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -130,13 +138,13 @@ export default function DashboardLayout({ children }: Props) {
           {/* User */}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div className="user-name" style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>Admin Principal</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>SUPERUSUARIO</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{fullName}</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>{roleLabel}</div>
             </div>
-            <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '14px', flexShrink: 0 }}>
-              A
+            <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '14px', flexShrink: 0 }}>
+              {initials}
             </div>
-            <button onClick={() => navigate('/')} title={t('nav.logout')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '4px' }}>
+            <button onClick={logout} title={t('nav.logout')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '4px' }}>
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useEquipos } from '../hooks/useEquipos'
+import { equipoService } from '../infrastructure/equipo/equipoService'
+import { estanqueService } from '../infrastructure/estanque/estanqueService'
 import type { Equipo, TipoEquipo } from '../domain/equipo/Equipo'
 
 const TIPO_BADGE: Record<string, { bg: string; color: string }> = {
@@ -14,7 +16,7 @@ const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
   Libre:    { bg: '#f1f5f9', color: '#64748b' },
 }
 
-function EquipoCard({ equipo, onEliminar }: { equipo: Equipo; onEliminar: (id: string) => void }) {
+function EquipoCard({ equipo, onAsignar, onEliminar }: { equipo: Equipo; onAsignar: (id: string) => void; onEliminar: (id: string) => void }) {
   const { t } = useTranslation()
   const tipo   = TIPO_BADGE[equipo.tipo]   ?? TIPO_BADGE.SENSOR
   const estado = ESTADO_BADGE[equipo.estado] ?? ESTADO_BADGE.Libre
@@ -42,33 +44,20 @@ function EquipoCard({ equipo, onEliminar }: { equipo: Equipo; onEliminar: (id: s
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
           <span style={{ color: '#64748b' }}>{t('equipos.location')}</span>
-          <span style={{ color: '#334155', textAlign: 'right', maxWidth: '55%' }}>{equipo.ubicacion}</span>
+          <span style={{ color: '#334155', textAlign: 'right', maxWidth: '55%' }}>{equipo.ubicacion || '—'}</span>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
         {esLibre ? (
           <>
-            <button style={{ flex: 1, backgroundColor: '#0f4c35', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+            <button
+              onClick={() => onAsignar(equipo.id)}
+              style={{ flex: 1, backgroundColor: '#0f4c35', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
               onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
               onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
             >
               {t('equipos.assignToPond')}
-            </button>
-            <button style={{ flex: 1, backgroundColor: 'transparent', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-              onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-              onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              {t('common.edit')}
-            </button>
-          </>
-        ) : (
-          <>
-            <button style={{ flex: 1, backgroundColor: 'transparent', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-              onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-              onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              {t('common.edit')}
             </button>
             <button
               onClick={() => onEliminar(equipo.id)}
@@ -81,6 +70,15 @@ function EquipoCard({ equipo, onEliminar }: { equipo: Equipo; onEliminar: (id: s
               </svg>
             </button>
           </>
+        ) : (
+          <button
+            onClick={() => onEliminar(equipo.id)}
+            style={{ flex: 1, backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 12px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+            onMouseOver={e => (e.currentTarget.style.backgroundColor = '#fee2e2')}
+            onMouseOut={e => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+          >
+            {t('common.delete')}
+          </button>
         )}
       </div>
     </div>
@@ -106,21 +104,85 @@ function AddCard({ onClick }: { onClick: () => void }) {
   )
 }
 
+interface EstanqueOpt { id: string; nombre: string }
+
 export default function EquiposPage() {
   const { equipos, stats, loading, refetch } = useEquipos()
   const { t } = useTranslation()
+
+  // Registro modal
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ nombre: '', tipo: 'SENSOR' as TipoEquipo, codigoFisico: '', ubicacion: '' })
+  const [saving, setSaving] = useState(false)
+  const [errorEquipo, setErrorEquipo] = useState<string | null>(null)
 
-  function handleRegistrar() {
-    // TODO: conectar con equipoService.registrar(form)
-    setShowModal(false)
-    setForm({ nombre: '', tipo: 'SENSOR', codigoFisico: '', ubicacion: '' })
-    refetch()
+  // Asignación modal
+  const [asignandoId, setAsignandoId] = useState<string | null>(null)
+  const [estanques, setEstanques] = useState<EstanqueOpt[]>([])
+  const [selectedEstanque, setSelectedEstanque] = useState('')
+  const [asignando, setAsignando] = useState(false)
+  const [errorAsignar, setErrorAsignar] = useState<string | null>(null)
+
+  async function abrirAsignacion(equipoId: string) {
+    setAsignandoId(equipoId)
+    setSelectedEstanque('')
+    setErrorAsignar(null)
+    try {
+      const todos = await estanqueService.getAll()
+      setEstanques(todos.map(e => ({ id: e.id, nombre: e.nombre })))
+    } catch {
+      setEstanques([])
+    }
   }
 
-  function handleEliminar(_id: string) {
-    // TODO: equipoService.eliminar(id).then(refetch)
+  async function handleAsignar() {
+    if (!selectedEstanque) {
+      setErrorAsignar('Selecciona un estanque')
+      return
+    }
+    setAsignando(true)
+    setErrorAsignar(null)
+    try {
+      await equipoService.asignarEstanque(asignandoId!, selectedEstanque)
+      setAsignandoId(null)
+      refetch()
+    } catch {
+      setErrorAsignar('No se pudo asignar el equipo. Intenta de nuevo.')
+    } finally {
+      setAsignando(false)
+    }
+  }
+
+  async function handleRegistrar() {
+    if (!form.nombre.trim()) {
+      setErrorEquipo('El nombre del equipo es requerido')
+      return
+    }
+    if (!form.codigoFisico.trim()) {
+      setErrorEquipo('El código físico es requerido')
+      return
+    }
+    setSaving(true)
+    setErrorEquipo(null)
+    try {
+      await equipoService.registrar({ nombre: form.nombre, tipo: form.tipo, codigoFisico: form.codigoFisico, ubicacion: form.ubicacion })
+      setShowModal(false)
+      setForm({ nombre: '', tipo: 'SENSOR', codigoFisico: '', ubicacion: '' })
+      refetch()
+    } catch {
+      setErrorEquipo('No se pudo registrar el equipo. Intenta de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleEliminar(id: string) {
+    try {
+      await equipoService.eliminar(id)
+      refetch()
+    } catch {
+      // silent — equipo may already be removed
+    }
   }
 
   const statItems = [
@@ -164,7 +226,7 @@ export default function EquiposPage() {
         ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>{t('common.loading')}</div>
         : (
           <div className="equipos-grid">
-            {equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} onEliminar={handleEliminar} />)}
+            {equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} onAsignar={abrirAsignacion} onEliminar={handleEliminar} />)}
             <AddCard onClick={() => setShowModal(true)} />
           </div>
         )
@@ -239,9 +301,12 @@ export default function EquiposPage() {
               </div>
             </div>
 
+            {errorEquipo && (
+              <p style={{ color: '#ef4444', fontSize: '13px', margin: '0 28px 0', paddingBottom: '4px' }}>{errorEquipo}</p>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', padding: '16px 28px', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setErrorEquipo(null) }}
                 style={{ fontSize: '14px', fontWeight: 500, padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#64748b', cursor: 'pointer' }}
                 onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
                 onMouseOut={e => (e.currentTarget.style.color = '#64748b')}
@@ -250,11 +315,69 @@ export default function EquiposPage() {
               </button>
               <button
                 onClick={handleRegistrar}
-                style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
-                onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
+                disabled={saving}
+                style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                onMouseOver={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0a3526' }}
+                onMouseOut={e => { if (!saving) e.currentTarget.style.backgroundColor = '#0f4c35' }}
               >
-                {t('equipos.registerEquipment')}
+                {saving ? 'Guardando...' : t('equipos.registerEquipment')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal asignar a estanque */}
+      {asignandoId && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 20px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('equipos.assignToPond')}</h2>
+              <button onClick={() => setAsignandoId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '2px' }}>
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div style={{ padding: '0 28px 24px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '8px' }}>Selecciona el estanque</label>
+              {estanques.length === 0
+                ? <p style={{ color: '#94a3b8', fontSize: '13px' }}>No hay estanques disponibles. Crea uno primero.</p>
+                : (
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={selectedEstanque}
+                      onChange={e => setSelectedEstanque(e.target.value)}
+                      style={{ width: '100%', padding: '10px 36px 10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a', appearance: 'none', cursor: 'pointer', boxSizing: 'border-box' }}
+                    >
+                      <option value="">— Elige un estanque —</option>
+                      {estanques.map(e => (
+                        <option key={e.id} value={e.id}>{e.nombre}</option>
+                      ))}
+                    </select>
+                    <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                )
+              }
+              {errorAsignar && <p style={{ color: '#ef4444', fontSize: '13px', margin: '8px 0 0' }}>{errorAsignar}</p>}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', padding: '16px 28px', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
+              <button
+                onClick={() => setAsignandoId(null)}
+                style={{ fontSize: '14px', fontWeight: 500, padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#64748b', cursor: 'pointer' }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleAsignar}
+                disabled={asignando || estanques.length === 0}
+                style={{ backgroundColor: '#0f4c35', color: '#fff', fontWeight: 600, fontSize: '14px', padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: (asignando || estanques.length === 0) ? 'not-allowed' : 'pointer', opacity: (asignando || estanques.length === 0) ? 0.7 : 1 }}
+              >
+                {asignando ? 'Asignando...' : 'Asignar'}
               </button>
             </div>
           </div>

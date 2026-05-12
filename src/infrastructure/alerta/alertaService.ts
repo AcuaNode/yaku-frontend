@@ -1,21 +1,61 @@
+import { http } from '../../lib/http'
+import { API_ENDPOINTS } from '../../config/api.config'
+import { getUserId } from '../../utils/token'
 import type { Alerta } from '../../domain/alerta/Alerta'
 
-const mockAlertas: Alerta[] = [
-  { id: '1', estanqueId: 'EST-004', tiempo: 'Hace 5m',  titulo: 'pH Crítico Detectado',    descripcion: 'El pH ha descendido por debajo del umbral de seguridad (6.1).', prioridad: 'CRITICA' },
-  { id: '2', estanqueId: 'EST-002', tiempo: 'Hace 45m', titulo: 'Mantenimiento de Sensor', descripcion: 'Calibración requerida para el sensor de O2 en el cuadrante norte.', prioridad: 'NORMAL' },
-  { id: '3', estanqueId: 'EST-009', tiempo: 'Hace 1h',  titulo: 'Oxígeno Bajo',            descripcion: 'Nivel de oxígeno en 3.5 mg/L. Aeradores activados automáticamente.', prioridad: 'CRITICA' },
-  { id: '4', estanqueId: 'GLOBAL',  tiempo: 'Hace 3h',  titulo: 'Reporte Diario Generado', descripcion: 'El consolidado de la producción de ayer ya está disponible para descarga.', prioridad: 'NORMAL' },
-  { id: '5', estanqueId: 'EST-012', tiempo: 'Hace 5h',  titulo: 'Inicio de Ciclo',         descripcion: 'Nuevas siembras registradas exitosamente en el sistema.', prioridad: 'NORMAL' },
-]
+interface NotificationResponseResource {
+  id: number
+  type: string
+  message: string
+  recipientUserId: number
+  triggerTemperature?: number
+  triggerPh?: number
+  triggerHardwareStatus?: string
+  createdAt: string
+}
+
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return 'Ahora'
+  if (mins < 60) return `Hace ${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `Hace ${hours}h`
+  return `Hace ${Math.floor(hours / 24)}d`
+}
+
+function buildTitle(n: NotificationResponseResource): string {
+  const t = n.type.toUpperCase()
+  if (t.includes('TEMP') && n.triggerTemperature != null) return `Anomalía de Temperatura (${n.triggerTemperature}°C)`
+  if (t.includes('PH') && n.triggerPh != null) return `Anomalía de pH (${n.triggerPh})`
+  if (n.triggerHardwareStatus) return `Estado de Hardware: ${n.triggerHardwareStatus}`
+  return n.type
+}
+
+async function fetchNotifications(): Promise<NotificationResponseResource[]> {
+  const userId = getUserId()
+  if (!userId) return []
+  const { data } = await http.get<NotificationResponseResource[]>(
+    API_ENDPOINTS.users.notifications(userId)
+  )
+  return Array.isArray(data) ? data : []
+}
 
 export const alertaService = {
   getAll: async (): Promise<Alerta[]> => {
-    // TODO: GET /api/alertas
-    return mockAlertas
+    const notifications = await fetchNotifications()
+    return notifications.map(n => ({
+      id:          String(n.id),
+      estanqueId:  '',
+      tiempo:      formatRelativeTime(n.createdAt),
+      titulo:      buildTitle(n),
+      descripcion: n.message,
+      prioridad:   (n.triggerPh || n.triggerTemperature) ? 'CRITICA' : 'NORMAL',
+    }))
   },
 
   getNoLeidas: async (): Promise<number> => {
-    // TODO: GET /api/alertas/no-leidas/count
-    return 3
+    const notifications = await fetchNotifications()
+    return notifications.length
   },
 }
