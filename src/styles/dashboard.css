@@ -1,0 +1,148 @@
+.dash-root {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f1f5f9;
+}
+
+/* Sidebar */
+.dash-sidebar {
+  width: 200px;
+  min-height: 100vh;
+  background-color: #0d1b2e;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* Mobile: sidebar como drawer */
+.dash-sidebar-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 200px;
+  background-color: #0d1b2e;
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  transition: transform 0.25s ease;
+}
+
+.dash-sidebar-drawer.open  { transform: translateX(0); }
+.dash-sidebar-drawer.closed { transform: translateX(-100%); }
+
+.dash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 30;
+}
+
+.dash-hamburger { display: none; }
+
+/* Main area */
+.dash-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Topbar */
+.dash-topbar {
+  height: 64px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Content */
+.dash-content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Main grid */
+.main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}
+
+/* ── Tablet (< 1100px) ── */
+@media (max-width: 1100px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Mobile (< 768px) ── */
+@media (max-width: 768px) {
+  .dash-sidebar       { display: none; }
+  .dash-hamburger     { display: flex; }
+  .dash-topbar        { padding: 0 16px; }
+  .dash-content       { padding: 16px; }
+  .stats-grid         { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .user-name          { display: none; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+}
+
+/* Equipos grid */
+.equipos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .equipos-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .equipos-grid { grid-template-columns: 1fr; }
+}
+
+/* Config 2-col layout */
+.config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .config-grid { grid-template-columns: 1fr; }
+}
+
+/* Equipos stats row */
+.equipos-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .equipos-stats { grid-template-columns: repeat(2, 1fr); }
+}
