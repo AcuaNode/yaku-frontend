@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import yakuLogo from '../assets/yaku-logo.jpeg'
+import yakuLogo from '../assets/yaku-logo.png'
 import { useAuth } from '../hooks/useAuth'
 import type { LoginCredentials } from '../domain/auth/Auth'
 
@@ -48,7 +48,7 @@ export default function LoginPage() {
         <AuthLangToggle />
 
         <div className="flex justify-center mb-6">
-          <img src={yakuLogo} alt="YacuControl" style={{ width: '180px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+          <img src={yakuLogo} alt="YacuControl" style={{ width: '300px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

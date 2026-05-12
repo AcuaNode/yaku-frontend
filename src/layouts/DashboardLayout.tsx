@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import yakuLogo from '../assets/yaku-logo.jpeg'
-import LanguageSwitcher from '../components/LanguageSwitcher'
+import yakuLogo from '../assets/yaku-logo.png'
 import '../styles/dashboard.css'
 
 function NavItems({ onNav }: { onNav?: () => void }) {
@@ -79,13 +78,7 @@ export default function DashboardLayout({ children }: Props) {
 
   const logoBlock = (
     <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-      <img src={yakuLogo} alt="YacuControl" style={{ width: '130px', mixBlendMode: 'lighten', opacity: 0.9 }} />
-    </div>
-  )
-
-  const sidebarBottom = (
-    <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-      <LanguageSwitcher />
+      <img src={yakuLogo} alt="YacuControl" style={{ width: '100%', mixBlendMode: 'lighten', opacity: 0.9 }} />
     </div>
   )
 
@@ -96,7 +89,6 @@ export default function DashboardLayout({ children }: Props) {
       <aside className="dash-sidebar">
         {logoBlock}
         <NavItems />
-        {sidebarBottom}
       </aside>
 
       {/* Drawer — visible en mobile via CSS */}
@@ -104,7 +96,6 @@ export default function DashboardLayout({ children }: Props) {
       <aside className={`dash-sidebar-drawer ${drawerOpen ? 'open' : 'closed'}`}>
         {logoBlock}
         <NavItems onNav={() => setDrawerOpen(false)} />
-        {sidebarBottom}
       </aside>
 
       {/* Main */}
