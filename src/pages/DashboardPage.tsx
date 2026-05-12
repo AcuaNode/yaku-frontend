@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import StatCard from '../components/StatCard'
 import AlertCard from '../components/AlertCard'
@@ -13,35 +14,36 @@ export default function DashboardPage() {
   const { lecturas, stats: estanqueStats } = useEstanques()
   const { alertas, noLeidas } = useAlertas()
   const { chartData, stats: sensorStats } = useSensores()
+  const { t } = useTranslation()
 
   const [showModal, setShowModal] = useState(false)
   const [granja, setGranja] = useState<CrearGranjaDTO>({ nombre: '', ubicacion: '' })
 
   const stats = [
     {
-      label: 'ESTANQUES ACTIVOS',
+      label: t('dashboard.activePonds'),
       value: String(estanqueStats?.totalActivos ?? 0).padStart(2, '0'),
-      sub: `↗ +${estanqueStats?.crecimientoMensual ?? 0} este mes`,
+      sub: `↗ +${estanqueStats?.crecimientoMensual ?? 0} ${t('common.thisMonth')}`,
       subColor: '#22c55e',
     },
     {
-      label: 'SENSORES CONECTADOS',
+      label: t('dashboard.connectedSensors'),
       value: String(sensorStats?.totalConectados ?? 0),
-      sub: `Sincronización: ${sensorStats?.sincronizacion ?? 0}%`,
+      sub: `${t('dashboard.sync')}: ${sensorStats?.sincronizacion ?? 0}%`,
       subColor: '#64748b',
     },
     {
-      label: 'ALERTAS NO LEÍDAS',
+      label: t('dashboard.unreadAlerts'),
       value: String(noLeidas).padStart(2, '0'),
-      badge: 'REVISIÓN',
+      badge: t('dashboard.reviewBadge'),
       badgeColor: '#f59e0b',
       badgeBg: '#fef3c7',
     },
     {
-      label: 'CALIDAD PROMEDIO',
-      valueLarge: 'BUENA',
+      label: t('dashboard.avgQuality'),
+      valueLarge: t('dashboard.goodQuality'),
       valueColor: '#0d9488',
-      badge: 'ÓPTIMO',
+      badge: t('dashboard.optimalBadge'),
       badgeColor: '#0d9488',
       badgeBg: '#ccfbf1',
     },
@@ -69,9 +71,9 @@ export default function DashboardPage() {
 
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: 0 }}>Alertas Recientes</h2>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: 0 }}>{t('dashboard.recentAlerts')}</h2>
             <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff', backgroundColor: '#ef4444', padding: '2px 8px', borderRadius: '20px' }}>
-              {noLeidas} NUEVAS
+              {noLeidas} {t('dashboard.newBadge')}
             </span>
           </div>
 
@@ -84,7 +86,7 @@ export default function DashboardPage() {
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            VER TODO EL HISTORIAL
+            {t('dashboard.viewHistory')}
           </button>
         </div>
       </div>
@@ -93,25 +95,25 @@ export default function DashboardPage() {
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Crear Granja</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('dashboard.createFarm')}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '22px', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Nombre del Granja</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{t('dashboard.farmName')}</label>
                 <input
                   type="text"
-                  placeholder="Ej: Granja G-01"
+                  placeholder={t('dashboard.farmNamePh')}
                   value={granja.nombre}
                   onChange={e => setGranja(p => ({ ...p, nombre: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Ubicación</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{t('dashboard.location')}</label>
                 <input
                   type="text"
-                  placeholder="Ej: Av. Primavera 567"
+                  placeholder={t('dashboard.locationPh')}
                   value={granja.ubicacion}
                   onChange={e => setGranja(p => ({ ...p, ubicacion: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box' }}
@@ -124,7 +126,7 @@ export default function DashboardPage() {
                   onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
                   onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
                 >
-                  Registrar Granja
+                  {t('dashboard.registerFarm')}
                 </button>
               </div>
             </div>

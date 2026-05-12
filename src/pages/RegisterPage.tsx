@@ -1,13 +1,35 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import yakuLogo from '../assets/yaku-logo.jpeg'
 import { useAuth } from '../hooks/useAuth'
 import type { RegisterCredentials } from '../domain/auth/Auth'
+
+function AuthLangToggle() {
+  const { i18n } = useTranslation()
+  const current = i18n.language.startsWith('en') ? 'en' : 'es'
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', fontSize: '11px', fontWeight: 700 }}>
+        {(['es', 'en'] as const).map(lang => (
+          <button
+            key={lang}
+            onClick={() => i18n.changeLanguage(lang)}
+            style={{ padding: '4px 10px', border: 'none', cursor: 'pointer', backgroundColor: current === lang ? '#0f172a' : 'transparent', color: current === lang ? '#fff' : '#94a3b8', transition: 'all 0.15s', letterSpacing: '0.05em' }}
+          >
+            {lang.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function RegisterPage() {
   const [form, setForm] = useState<RegisterCredentials>({ username: '', firstName: '', lastName: '', email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const { register, loading, error, setError } = useAuth()
+  const { t } = useTranslation()
 
   function handleChange(field: keyof RegisterCredentials, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -27,6 +49,8 @@ export default function RegisterPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#eef1f8' }} className="flex items-center justify-center p-4">
       <div style={{ backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', width: '100%', maxWidth: '380px', padding: '40px 36px' }}>
 
+        <AuthLangToggle />
+
         <div className="flex justify-center mb-6">
           <img src={yakuLogo} alt="YacuControl" style={{ width: '180px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
         </div>
@@ -34,7 +58,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           <div>
-            <label style={labelStyle}>Username</label>
+            <label style={labelStyle}>{t('register.username')}</label>
             <div style={inputWrapper}>
               <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -45,13 +69,13 @@ export default function RegisterPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div style={{ minWidth: 0 }}>
-              <label style={labelStyle}>FirstName</label>
+              <label style={labelStyle}>{t('register.firstName')}</label>
               <div style={inputWrapper}>
                 <input type="text" placeholder="Carlos" value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} style={inputStyle} />
               </div>
             </div>
             <div style={{ minWidth: 0 }}>
-              <label style={labelStyle}>LastName</label>
+              <label style={labelStyle}>{t('register.lastName')}</label>
               <div style={inputWrapper}>
                 <input type="text" placeholder="Rodriguez" value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} style={inputStyle} />
               </div>
@@ -59,7 +83,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Email</label>
+            <label style={labelStyle}>{t('register.email')}</label>
             <div style={inputWrapper}>
               <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -69,7 +93,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Contraseña</label>
+            <label style={labelStyle}>{t('register.password')}</label>
             <div style={inputWrapper}>
               <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -100,7 +124,7 @@ export default function RegisterPage() {
             disabled={loading}
             style={{ marginTop: '4px', backgroundColor: loading ? '#7dd3ea' : '#38bdf8', color: '#fff', fontWeight: 600, fontSize: '14px', borderRadius: '8px', padding: '12px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            {loading ? 'Registrando...' : 'Registrarse'}
+            {loading ? t('register.submitting') : t('register.submit')}
             {!loading && (
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -110,15 +134,15 @@ export default function RegisterPage() {
         </form>
 
         <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <a href="#" style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
+          <a href="#" style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none' }}>{t('register.forgotPassword')}</a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
             <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>o</span>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{t('common.or')}</span>
             <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
           </div>
           <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            <Link to="/" style={{ color: '#38bdf8', textDecoration: 'none' }}>¿Ya tienes cuenta?</Link>
-            {' '}Iniciar Sesión
+            <Link to="/" style={{ color: '#38bdf8', textDecoration: 'none' }}>{t('register.alreadyHaveAccount')}</Link>
+            {' '}{t('register.signIn')}
           </p>
         </div>
       </div>

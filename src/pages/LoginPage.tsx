@@ -1,13 +1,35 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import yakuLogo from '../assets/yaku-logo.jpeg'
 import { useAuth } from '../hooks/useAuth'
 import type { LoginCredentials } from '../domain/auth/Auth'
+
+function AuthLangToggle() {
+  const { i18n } = useTranslation()
+  const current = i18n.language.startsWith('en') ? 'en' : 'es'
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', fontSize: '11px', fontWeight: 700 }}>
+        {(['es', 'en'] as const).map(lang => (
+          <button
+            key={lang}
+            onClick={() => i18n.changeLanguage(lang)}
+            style={{ padding: '4px 10px', border: 'none', cursor: 'pointer', backgroundColor: current === lang ? '#0f172a' : 'transparent', color: current === lang ? '#fff' : '#94a3b8', transition: 'all 0.15s', letterSpacing: '0.05em' }}
+          >
+            {lang.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const [credentials, setCredentials] = useState<LoginCredentials>({ username: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const { login, loading, error, setError } = useAuth()
+  const { t } = useTranslation()
 
   function handleChange(field: keyof LoginCredentials, value: string) {
     setCredentials(prev => ({ ...prev, [field]: value }))
@@ -23,6 +45,8 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', backgroundColor: '#eef1f8' }} className="flex items-center justify-center p-4">
       <div style={{ backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', width: '100%', maxWidth: '380px', padding: '40px 36px' }}>
 
+        <AuthLangToggle />
+
         <div className="flex justify-center mb-6">
           <img src={yakuLogo} alt="YacuControl" style={{ width: '180px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
         </div>
@@ -31,7 +55,7 @@ export default function LoginPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Username
+              {t('login.username')}
             </label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', gap: '8px' }}>
               <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -49,7 +73,7 @@ export default function LoginPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Contraseña
+              {t('login.password')}
             </label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', gap: '8px' }}>
               <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -87,7 +111,7 @@ export default function LoginPage() {
             disabled={loading}
             style={{ marginTop: '4px', backgroundColor: loading ? '#7dd3ea' : '#38bdf8', color: '#fff', fontWeight: 600, fontSize: '14px', borderRadius: '8px', padding: '12px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            {loading ? t('login.submitting') : t('login.submit')}
             {!loading && (
               <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -97,15 +121,15 @@ export default function LoginPage() {
         </form>
 
         <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <a href="#" style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
+          <a href="#" style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'none' }}>{t('login.forgotPassword')}</a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
             <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>o</span>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{t('common.or')}</span>
             <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
           </div>
           <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            <Link to="/register" style={{ color: '#38bdf8', textDecoration: 'none' }}>¿No tienes cuenta?</Link>
-            {' '}Solicitar acceso
+            <Link to="/register" style={{ color: '#38bdf8', textDecoration: 'none' }}>{t('login.noAccount')}</Link>
+            {' '}{t('login.requestAccess')}
           </p>
         </div>
       </div>

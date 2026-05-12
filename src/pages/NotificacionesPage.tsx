@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 import type { Notificacion, TipoNotificacion } from '../domain/notificacion/Notificacion'
@@ -6,7 +7,6 @@ import type { Notificacion, TipoNotificacion } from '../domain/notificacion/Noti
 const PAGE_SIZE = 4
 const TOTAL_MOCK = 128
 
-// ── Icons ──────────────────────────────────────────────────────────────────
 const TIPO_CONFIG: Record<TipoNotificacion, { iconBg: string; iconColor: string; icon: React.ReactNode }> = {
   ALERTA: {
     iconBg: '#fff7ed', iconColor: '#ef4444',
@@ -26,25 +26,22 @@ const TIPO_CONFIG: Record<TipoNotificacion, { iconBg: string; iconColor: string;
   },
 }
 
-// ── Notification item ───────────────────────────────────────────────────────
 function NotificacionItem({ n }: { n: Notificacion }) {
+  const { t } = useTranslation()
   const cfg = TIPO_CONFIG[n.tipo]
   const esLeida = n.estado === 'LEIDA'
   const badgeBg = esLeida ? '#f1f5f9' : (n.esCritica ? '#ef4444' : '#0d9488')
   const badgeColor = esLeida ? '#94a3b8' : '#fff'
-  const badgeText = esLeida ? 'LEÍDA' : 'NO LEÍDA'
+  const badgeText = esLeida ? t('notificaciones.readBadge') : t('notificaciones.unreadBadge')
   const tagColor = esLeida ? '#94a3b8' : '#0d9488'
   const tagBorder = esLeida ? '1px solid #e2e8f0' : '1px solid #99f6e4'
   const tagBg = esLeida ? 'transparent' : '#f0fdf9'
 
   return (
     <div style={{ display: 'flex', gap: '16px', padding: '22px 0', borderBottom: '1px solid #f1f5f9', alignItems: 'flex-start' }}>
-      {/* Icon */}
       <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: cfg.iconBg, color: cfg.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
         {cfg.icon}
       </div>
-
-      {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '15px', fontWeight: esLeida ? 500 : 700, color: esLeida ? '#64748b' : '#0f172a' }}>{n.titulo}</span>
@@ -68,11 +65,11 @@ function NotificacionItem({ n }: { n: Notificacion }) {
   )
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
 type FiltroEstado = 'todas' | 'no_leidas' | 'leidas'
 
 export default function NotificacionesPage() {
   const { notificaciones, loading, marcarTodasLeidas } = useNotificaciones()
+  const { t } = useTranslation()
   const [estanqueFiltro, setEstanqueFiltro] = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todas')
   const [fechaDesde, setFechaDesde] = useState('')
@@ -109,14 +106,19 @@ export default function NotificacionesPage() {
   const inputStyle: React.CSSProperties = { padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', color: '#334155', backgroundColor: '#fff', outline: 'none', width: '130px' }
   const labelStyle: React.CSSProperties = { fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }
 
+  const statusFilters: [FiltroEstado, string][] = [
+    ['todas', t('notificaciones.all')],
+    ['no_leidas', t('notificaciones.unread')],
+    ['leidas', t('notificaciones.read')],
+  ]
+
   return (
     <DashboardLayout>
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Notificaciones</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Monitoreo de alertas críticas y eventos del sistema en tiempo real.</p>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{t('notificaciones.title')}</h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{t('notificaciones.subtitle')}</p>
         </div>
         <button
           onClick={marcarTodasLeidas}
@@ -127,7 +129,7 @@ export default function NotificacionesPage() {
           <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
-          Marcar todas como leídas
+          {t('notificaciones.markAllRead')}
         </button>
       </div>
 
@@ -135,16 +137,15 @@ export default function NotificacionesPage() {
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px 24px', marginBottom: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px', flexWrap: 'wrap' }}>
 
-          {/* Estanque */}
           <div>
-            <label style={labelStyle}>Estanque</label>
+            <label style={labelStyle}>{t('notificaciones.pondLabel')}</label>
             <div style={{ position: 'relative' }}>
               <select
                 value={estanqueFiltro}
                 onChange={e => { setEstanqueFiltro(e.target.value); setPage(1) }}
                 style={{ ...inputStyle, width: '180px', appearance: 'none', paddingRight: '32px', cursor: 'pointer' }}
               >
-                <option value="todos">Todos los estanques</option>
+                <option value="todos">{t('notificaciones.allPonds')}</option>
                 {estanques.filter(e => e !== 'todos').map(e => <option key={e} value={e}>{e}</option>)}
               </select>
               <svg width="14" height="14" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
@@ -153,21 +154,19 @@ export default function NotificacionesPage() {
             </div>
           </div>
 
-          {/* Rango de fecha */}
           <div>
-            <label style={labelStyle}>Rango de Fecha</label>
+            <label style={labelStyle}>{t('notificaciones.dateRange')}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={inputStyle} />
-              <span style={{ fontSize: '12px', color: '#94a3b8' }}>al</span>
+              <span style={{ fontSize: '12px', color: '#94a3b8' }}>{t('notificaciones.dateTo')}</span>
               <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={inputStyle} />
             </div>
           </div>
 
-          {/* Estado */}
           <div>
-            <label style={labelStyle}>Estado</label>
+            <label style={labelStyle}>{t('notificaciones.statusLabel')}</label>
             <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-              {([['todas', 'Todas'], ['no_leidas', 'No leídas'], ['leidas', 'Leídas']] as [FiltroEstado, string][]).map(([val, label]) => (
+              {statusFilters.map(([val, label], idx) => (
                 <button
                   key={val}
                   onClick={() => cambiarFiltroEstado(val)}
@@ -175,7 +174,7 @@ export default function NotificacionesPage() {
                     padding: '9px 14px', fontSize: '13px', fontWeight: filtroEstado === val ? 700 : 400, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
                     backgroundColor: filtroEstado === val ? '#0f172a' : '#fff',
                     color: filtroEstado === val ? '#fff' : '#64748b',
-                    borderRight: val !== 'leidas' ? '1px solid #e2e8f0' : 'none',
+                    borderRight: idx < statusFilters.length - 1 ? '1px solid #e2e8f0' : 'none',
                   }}
                 >
                   {label}
@@ -184,7 +183,6 @@ export default function NotificacionesPage() {
             </div>
           </div>
 
-          {/* Limpiar */}
           <button
             onClick={limpiarFiltros}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#0d9488', fontSize: '13px', fontWeight: 600, padding: '0 0 2px', marginBottom: '2px' }}
@@ -192,7 +190,7 @@ export default function NotificacionesPage() {
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Limpiar filtros
+            {t('notificaciones.clearFilters')}
           </button>
         </div>
       </div>
@@ -200,16 +198,15 @@ export default function NotificacionesPage() {
       {/* List */}
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '0 24px', marginBottom: '0' }}>
         {loading
-          ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Cargando...</div>
+          ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>{t('common.loading')}</div>
           : paginated.length === 0
-            ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }}>No hay notificaciones con los filtros seleccionados.</div>
+            ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }}>{t('notificaciones.noNotifications')}</div>
             : paginated.map(n => <NotificacionItem key={n.id} n={n} />)
         }
 
-        {/* Pagination */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', flexWrap: 'wrap', gap: '10px', borderTop: paginated.length > 0 ? '1px solid #f8fafc' : 'none' }}>
           <span style={{ fontSize: '13px', color: '#64748b' }}>
-            Mostrando {paginated.length} de {TOTAL_MOCK} notificaciones
+            {t('notificaciones.showing', { count: paginated.length, total: TOTAL_MOCK })}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <PageBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 
-// ── Toggle switch ──────────────────────────────────────────────────────────
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <div
@@ -13,7 +13,6 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   )
 }
 
-// ── Password input ─────────────────────────────────────────────────────────
 function PasswordInput({ placeholder, value, onChange }: { placeholder: string; value: string; onChange: (v: string) => void }) {
   const [show, setShow] = useState(false)
   return (
@@ -37,7 +36,6 @@ function PasswordInput({ placeholder, value, onChange }: { placeholder: string; 
   )
 }
 
-// ── Preference row ─────────────────────────────────────────────────────────
 function PrefRow({ icon, label, sub, right }: { icon: React.ReactNode; label: string; sub: string; right: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #f1f5f9' }}>
@@ -53,8 +51,26 @@ function PrefRow({ icon, label, sub, right }: { icon: React.ReactNode; label: st
   )
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
+function LangSwitcherLight() {
+  const { i18n } = useTranslation()
+  const current = i18n.language.startsWith('en') ? 'en' : 'es'
+  return (
+    <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', fontSize: '11px', fontWeight: 700 }}>
+      {(['es', 'en'] as const).map(lang => (
+        <button
+          key={lang}
+          onClick={() => i18n.changeLanguage(lang)}
+          style={{ padding: '5px 12px', border: 'none', cursor: 'pointer', backgroundColor: current === lang ? '#0f172a' : 'transparent', color: current === lang ? '#fff' : '#64748b', transition: 'all 0.15s', letterSpacing: '0.05em' }}
+        >
+          {lang.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function ConfiguracionPage() {
+  const { t } = useTranslation()
   const [passwordActual, setPasswordActual] = useState('')
   const [passwordNueva, setPasswordNueva] = useState('')
   const [passwordConfirmar, setPasswordConfirmar] = useState('')
@@ -64,32 +80,35 @@ export default function ConfiguracionPage() {
 
   function handleActualizarPassword() {
     // TODO: PATCH /api/auth/change-password
-    setSuccessMsg('Contraseña actualizada correctamente.')
+    setSuccessMsg(t('configuracion.passwordUpdated'))
     setPasswordActual(''); setPasswordNueva(''); setPasswordConfirmar('')
     setTimeout(() => setSuccessMsg(''), 3000)
   }
 
+  const profileFields = [
+    { label: t('configuracion.fullName'),   value: 'Carlos Alberto Rodriguez Santos', color: '#0f172a' },
+    { label: t('configuracion.email'),       value: 'c.rodriguez@yakufarms.com',       color: '#0f172a' },
+    { label: t('configuracion.farmId'),      value: '#FINCA-SJ-2024',                  color: '#0d9488' },
+    { label: t('configuracion.userRole'),    value: t('configuracion.adminValue'),      color: '#0f172a' },
+  ]
+
   return (
     <DashboardLayout>
 
-      {/* Header */}
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Configuración del Perfil</h1>
-        <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Administra tu información personal, seguridad y suscripción del sistema.</p>
+        <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{t('configuracion.title')}</h1>
+        <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{t('configuracion.subtitle')}</p>
       </div>
 
       <div className="config-grid">
 
-        {/* ── LEFT COLUMN ── */}
+        {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Profile card */}
           <div style={{ backgroundColor: '#fff', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '28px' }}>
-
-            {/* Top: avatar + name + edit */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-                {/* Avatar with camera overlay */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <div style={{ width: '72px', height: '72px', borderRadius: '12px', backgroundColor: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 800, color: '#fff' }}>
                     CR
@@ -103,7 +122,7 @@ export default function ConfiguracionPage() {
                 <div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>Carlos Rodriguez</div>
                   <span style={{ backgroundColor: '#ccfbf1', color: '#0d9488', fontSize: '10px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', letterSpacing: '0.06em' }}>
-                    ADMINISTRADOR PRINCIPAL
+                    {t('configuracion.adminRole')}
                   </span>
                 </div>
               </div>
@@ -116,21 +135,15 @@ export default function ConfiguracionPage() {
                 <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                {editMode ? 'Guardar' : 'Editar'}
+                {editMode ? t('common.save') : t('common.edit')}
               </button>
             </div>
 
-            {/* Info grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              {[
-                { label: 'Nombre Completo',      value: 'Carlos Alberto Rodriguez Santos', color: '#0f172a' },
-                { label: 'Correo Electrónico',   value: 'c.rodriguez@yakufarms.com',       color: '#0f172a' },
-                { label: 'ID de Granja Asignada',value: '#FINCA-SJ-2024',                  color: '#0d9488' },
-                { label: 'Rol de Usuario',        value: 'Administrador',                   color: '#0f172a' },
-              ].map(item => (
+              {profileFields.map(item => (
                 <div key={item.label}>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>{item.label}</div>
-                  {editMode && item.label !== 'ID de Granja Asignada' && item.label !== 'Rol de Usuario'
+                  {editMode && item.label !== t('configuracion.farmId') && item.label !== t('configuracion.userRole')
                     ? <input defaultValue={item.value} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 10px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box', color: '#0f172a' }} />
                     : <div style={{ fontSize: '14px', fontWeight: 600, color: item.color }}>{item.value}</div>
                   }
@@ -145,7 +158,7 @@ export default function ConfiguracionPage() {
               <svg width="16" height="16" fill="none" stroke="#0d9488" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#0d9488', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Plan de Suscripción</span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#0d9488', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{t('configuracion.subscriptionPlan')}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
               <div>
@@ -153,22 +166,22 @@ export default function ConfiguracionPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#fff' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                    Activo
+                    {t('configuracion.active')}
                   </span>
-                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Renovación: 12 Oct, 2024</span>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{t('configuracion.renewal')} 12 Oct, 2024</span>
                 </div>
               </div>
               <button style={{ backgroundColor: '#0d9488', color: '#fff', border: 'none', borderRadius: '10px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0f766e')}
                 onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0d9488')}
               >
-                Gestionar Plan
+                {t('configuracion.managePlan')}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN ── */}
+        {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Security card */}
@@ -177,21 +190,21 @@ export default function ConfiguracionPage() {
               <svg width="20" height="20" fill="none" stroke="#0f172a" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Seguridad</h2>
+              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('configuracion.security')}</h2>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Contraseña Actual</label>
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{t('configuracion.currentPassword')}</label>
                 <PasswordInput placeholder="••••••••••••" value={passwordActual} onChange={setPasswordActual} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Nueva Contraseña</label>
-                <PasswordInput placeholder="Mín. 8 caracteres" value={passwordNueva} onChange={setPasswordNueva} />
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{t('configuracion.newPassword')}</label>
+                <PasswordInput placeholder={t('configuracion.newPasswordPh')} value={passwordNueva} onChange={setPasswordNueva} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Confirmar Nueva Contraseña</label>
-                <PasswordInput placeholder="Repetir contraseña" value={passwordConfirmar} onChange={setPasswordConfirmar} />
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>{t('configuracion.confirmPassword')}</label>
+                <PasswordInput placeholder={t('configuracion.confirmPasswordPh')} value={passwordConfirmar} onChange={setPasswordConfirmar} />
               </div>
 
               {successMsg && (
@@ -207,7 +220,7 @@ export default function ConfiguracionPage() {
                 onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
                 onMouseOut={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
               >
-                Actualizar Contraseña
+                {t('configuracion.updatePassword')}
               </button>
             </div>
           </div>
@@ -218,23 +231,19 @@ export default function ConfiguracionPage() {
               <svg width="20" height="20" fill="none" stroke="#0f172a" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Preferencias</h2>
+              <h2 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('configuracion.preferences')}</h2>
             </div>
 
             <PrefRow
               icon={<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>}
-              label="Idioma del Sistema"
-              sub="Español (Latinoamérica)"
-              right={
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '4px' }}>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </button>
-              }
+              label={t('configuracion.language')}
+              sub={t('configuracion.languageSub')}
+              right={<LangSwitcherLight />}
             />
             <PrefRow
               icon={<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}
-              label="Modo Oscuro"
-              sub="Seguir sistema"
+              label={t('configuracion.darkMode')}
+              sub={t('configuracion.darkModeSub')}
               right={<Toggle on={modoOscuro} onChange={setModoOscuro} />}
             />
           </div>

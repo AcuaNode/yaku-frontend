@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useOperadores } from '../hooks/useOperadores'
 import type { Operador } from '../domain/operador/Operador'
@@ -42,6 +43,7 @@ function PaginationBtn({ active, children, onClick, disabled }: { active?: boole
 
 export default function OperadoresPage() {
   const { operadores, stats, farmToken, loading, actualizarToken } = useOperadores()
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [copied, setCopied] = useState(false)
 
@@ -58,16 +60,23 @@ export default function OperadoresPage() {
     await actualizarToken()
   }
 
-  const HEADERS = ['User ID', 'Nombre Completo', 'Email', 'Rol', 'Estanque Asignado', 'Fecha Registro', 'Acciones']
+  const HEADERS = [
+    t('operadores.hUserId'),
+    t('operadores.hFullName'),
+    t('operadores.hEmail'),
+    t('operadores.hRole'),
+    t('operadores.hAssignedPond'),
+    t('operadores.hRegistrationDate'),
+    t('operadores.hActions'),
+  ]
 
   return (
     <DashboardLayout>
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Gestión de Operadores</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Administra los permisos y acceso del personal de campo.</p>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{t('operadores.title')}</h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{t('operadores.subtitle')}</p>
         </div>
         <button
           onClick={handleActualizarToken}
@@ -75,20 +84,18 @@ export default function OperadoresPage() {
           onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
           onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
         >
-          Actualizar Token
+          {t('operadores.refreshToken')}
         </button>
       </div>
 
-      {/* Stats card */}
       <div style={{ display: 'inline-block', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #f1f5f9', padding: '16px 24px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-        <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>Total Operadores</div>
+        <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }}>{t('operadores.totalOperators')}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
           <span style={{ fontSize: '34px', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{stats?.total ?? 0}</span>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#0d9488' }}>+{stats?.crecimientoMensual ?? 0} este mes</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#0d9488' }}>+{stats?.crecimientoMensual ?? 0} {t('common.thisMonth')}</span>
         </div>
       </div>
 
-      {/* Table */}
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '20px', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '680px', fontSize: '13px' }}>
@@ -101,7 +108,7 @@ export default function OperadoresPage() {
             </thead>
             <tbody>
               {loading
-                ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>Cargando...</td></tr>
+                ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>{t('common.loading')}</td></tr>
                 : paginated.map(op => (
                   <tr key={op.id} style={{ borderBottom: '1px solid #f8fafc' }}
                     onMouseOver={e => (e.currentTarget.style.backgroundColor = '#fafbfc')}
@@ -120,8 +127,8 @@ export default function OperadoresPage() {
                     <td style={{ padding: '14px 16px', color: '#64748b', whiteSpace: 'nowrap' }}>{op.fechaRegistro}</td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d9488', fontSize: '13px', fontWeight: 600, padding: 0 }}>[Editar]</button>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d9488', fontSize: '13px', fontWeight: 600, padding: 0 }}>[Ver perfil]</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d9488', fontSize: '13px', fontWeight: 600, padding: 0 }}>{t('operadores.editAction')}</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d9488', fontSize: '13px', fontWeight: 600, padding: 0 }}>{t('operadores.viewProfile')}</button>
                       </div>
                     </td>
                   </tr>
@@ -131,17 +138,16 @@ export default function OperadoresPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid #f8fafc', flexWrap: 'wrap', gap: '10px' }}>
           <span style={{ fontSize: '13px', color: '#64748b' }}>
-            Mostrando {Math.min(PAGE_SIZE, operadores.length - (page - 1) * PAGE_SIZE)} de {stats?.total ?? operadores.length} operadores
+            {t('operadores.showing', { count: Math.min(PAGE_SIZE, operadores.length - (page - 1) * PAGE_SIZE), total: stats?.total ?? operadores.length })}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</PaginationBtn>
+            <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>{t('operadores.previous')}</PaginationBtn>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
               <PaginationBtn key={n} active={page === n} onClick={() => setPage(n)}>{n}</PaginationBtn>
             ))}
-            <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Siguiente</PaginationBtn>
+            <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>{t('operadores.next')}</PaginationBtn>
           </div>
         </div>
       </div>
@@ -149,22 +155,22 @@ export default function OperadoresPage() {
       {/* FarmToken card */}
       <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '24px', maxWidth: '560px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#0d9488', letterSpacing: '0.1em', textTransform: 'uppercase' }}>SEGURIDAD</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#0d9488', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('operadores.security')}</span>
           <svg width="20" height="20" fill="none" stroke="#0d9488" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
           </svg>
         </div>
-        <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>Tienes un FarmToken</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>{t('operadores.farmTokenTitle')}</h2>
         <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>
-          Usa este código de invitación para nuevos piscicultores con permisos pre-configurados.
+          {t('operadores.farmTokenDesc')}
         </p>
         <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px 16px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>Código Activo</div>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>{t('operadores.activeCode')}</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
             <span style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.05em', fontFamily: 'monospace' }}>{farmToken}</span>
             <button
               onClick={copyToken}
-              title={copied ? '¡Copiado!' : 'Copiar código'}
+              title={copied ? t('operadores.copiedTitle') : t('operadores.copyTitle')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#0d9488' : '#94a3b8', display: 'flex', padding: '4px', transition: 'color 0.15s' }}
             >
               {copied

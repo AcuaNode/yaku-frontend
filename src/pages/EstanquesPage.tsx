@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '../layouts/DashboardLayout'
 import { useEstanques } from '../hooks/useEstanques'
 import type { EstadoEstanque } from '../domain/estanque/Estanque'
@@ -43,19 +44,25 @@ const DOT_COLOR: Record<EstadoEstanque, string> = {
 }
 
 function EstadoBadge({ estado }: { estado: EstadoEstanque }) {
+  const { t } = useTranslation()
   const s = ESTADO_STYLE[estado]
+  const labelMap: Record<EstadoEstanque, string> = {
+    'ÓPTIMO':   t('estados.optimal'),
+    'ALERTA':   t('estados.alert'),
+    'CRÍTICO':  t('estados.critical'),
+    'INACTIVO': t('estados.inactive'),
+  }
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: s.bg, color: s.color, fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
-      {s.icon} {estado}
+      {s.icon} {labelMap[estado]}
     </span>
   )
 }
 
-const HEADERS = ['ID', 'NOMBRE DEL ESTANQUE', 'SENSORES ASIGNADOS', 'ÚLTIMA LECTURA', 'ESTADO', 'ACCIONES']
-
 export default function EstanquesPage() {
   const { listItems, stats, loading } = useEstanques()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ nombre: '', tipoCultivo: 'Tilapia', capacidad: '' })
 
@@ -65,14 +72,23 @@ export default function EstanquesPage() {
     setForm({ nombre: '', tipoCultivo: 'Tilapia', capacidad: '' })
   }
 
+  const HEADERS = [
+    t('estanques.hId'),
+    t('estanques.hName'),
+    t('estanques.hSensors'),
+    t('estanques.hLastReading'),
+    t('estanques.hStatus'),
+    t('estanques.hActions'),
+  ]
+
   return (
     <DashboardLayout>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Gestión de Estanques</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Monitoreo en tiempo real de los parámetros del agua.</p>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{t('estanques.title')}</h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{t('estanques.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -83,7 +99,7 @@ export default function EstanquesPage() {
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Nuevo Estanque
+          {t('estanques.newPond')}
         </button>
       </div>
 
@@ -102,7 +118,7 @@ export default function EstanquesPage() {
             </thead>
             <tbody>
               {loading
-                ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8', fontSize: '13px' }}>Cargando...</td></tr>
+                ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8', fontSize: '13px' }}>{t('common.loading')}</td></tr>
                 : listItems.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid #f8fafc' }}
                     onMouseOver={e => (e.currentTarget.style.backgroundColor = '#fafbfc')}
@@ -118,7 +134,7 @@ export default function EstanquesPage() {
                     <td style={{ padding: '14px 16px' }}>
                       {item.sensores.length > 0
                         ? <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{item.sensores.map(s => <SensorBadge key={s} sensor={s} />)}</div>
-                        : <span style={{ color: '#94a3b8', fontSize: '12px' }}>Sin sensores</span>
+                        : <span style={{ color: '#94a3b8', fontSize: '12px' }}>{t('estanques.noSensors')}</span>
                       }
                     </td>
                     <td style={{ padding: '14px 16px', color: '#64748b' }}>{item.ultimaLectura}</td>
@@ -131,7 +147,7 @@ export default function EstanquesPage() {
                           onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                           onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
-                          Ver detalles
+                          {t('estanques.viewDetails')}
                         </button>
                         <button style={{ color: '#64748b', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex' }}
                           onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
@@ -156,9 +172,9 @@ export default function EstanquesPage() {
         <svg width="20" height="20" fill="none" stroke="rgba(255,255,255,0.4)" viewBox="0 0 24 24" style={{ marginBottom: '10px' }}>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-        <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px' }}>Total Estanques</div>
+        <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '6px' }}>{t('estanques.totalPonds')}</div>
         <div style={{ fontSize: '40px', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: '8px' }}>{stats?.totalEstanques ?? 0}</div>
-        <div style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>↗ +{stats?.crecimientoMensual ?? 0} este mes</div>
+        <div style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>↗ +{stats?.crecimientoMensual ?? 0} {t('common.thisMonth')}</div>
       </div>
 
       {/* Modal nuevo estanque */}
@@ -166,9 +182,8 @@ export default function EstanquesPage() {
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', width: '100%', maxWidth: '460px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
 
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Crear Nuevo Estanque</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanques.modalTitle')}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: '2px' }}
                 onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
                 onMouseOut={e => (e.currentTarget.style.color = '#94a3b8')}
@@ -179,20 +194,19 @@ export default function EstanquesPage() {
               </button>
             </div>
 
-            {/* Body */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '0 28px 28px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Nombre del Estanque</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>{t('estanques.pondName')}</label>
                 <input
                   type="text"
-                  placeholder="Ej: Estanque A-04"
+                  placeholder={t('estanques.pondNamePh')}
                   value={form.nombre}
                   onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', boxSizing: 'border-box', color: '#0f172a' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Tipo de Cultivo</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>{t('estanques.cultureType')}</label>
                 <div style={{ position: 'relative' }}>
                   <select
                     value={form.tipoCultivo}
@@ -204,7 +218,7 @@ export default function EstanquesPage() {
                     <option>Camarón</option>
                     <option>Salmón</option>
                     <option>Carpa</option>
-                    <option>Otro</option>
+                    <option>{t('estanques.other')}</option>
                   </select>
                   <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -212,7 +226,7 @@ export default function EstanquesPage() {
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>Capacidad (m³)</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>{t('estanques.capacity')}</label>
                 <input
                   type="number"
                   placeholder="0.00"
@@ -225,7 +239,6 @@ export default function EstanquesPage() {
               </div>
             </div>
 
-            {/* Footer */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', padding: '16px 28px', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
               <button
                 onClick={() => setShowModal(false)}
@@ -233,7 +246,7 @@ export default function EstanquesPage() {
                 onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
                 onMouseOut={e => (e.currentTarget.style.color = '#64748b')}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleCrear}
@@ -241,7 +254,7 @@ export default function EstanquesPage() {
                 onMouseOver={e => (e.currentTarget.style.backgroundColor = '#0a3526')}
                 onMouseOut={e => (e.currentTarget.style.backgroundColor = '#0f4c35')}
               >
-                Registrar Estanque
+                {t('estanques.registerPond')}
               </button>
             </div>
           </div>

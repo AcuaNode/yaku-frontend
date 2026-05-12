@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import i18next from 'i18next'
 import type { LoginCredentials, RegisterCredentials } from '../domain/auth/Auth'
 import { authService } from '../infrastructure/auth/authService'
 import { useAuthContext } from '../context/AuthContext'
@@ -13,7 +14,7 @@ export function useAuth() {
 
   async function login(credentials: LoginCredentials) {
     if (!credentials.username || !credentials.password) {
-      setError('Credenciales inválidas')
+      setError(i18next.t('login.errorInvalid'))
       return
     }
     setLoading(true)
@@ -25,7 +26,7 @@ export function useAuth() {
       setToken('mock-token')
       navigate('/dashboard')
     } catch {
-      setError('Usuario o contraseña incorrectos')
+      setError(i18next.t('login.errorCredentials'))
     } finally {
       setLoading(false)
     }
@@ -34,7 +35,7 @@ export function useAuth() {
   async function register(data: RegisterCredentials) {
     const { username, firstName, lastName, email, password } = data
     if (!username || !firstName || !lastName || !email || !password) {
-      setError('Todos los campos son requeridos')
+      setError(i18next.t('register.errorRequired'))
       return
     }
     setLoading(true)
@@ -46,7 +47,7 @@ export function useAuth() {
       setToken('mock-token')
       navigate('/dashboard')
     } catch {
-      setError('Error al registrar usuario')
+      setError(i18next.t('register.errorRegister'))
     } finally {
       setLoading(false)
     }
