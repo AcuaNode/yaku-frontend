@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import yakuLogo from '../assets/yaku-logo.png'
 import { useAuthContext } from '../context/AuthContext'
@@ -75,8 +75,7 @@ interface Props { children: React.ReactNode }
 
 export default function DashboardLayout({ children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const navigate = useNavigate()
-  const { t } = useTranslation()
+const { t } = useTranslation()
   const { user } = useAuthContext()
   const { logout } = useAuth()
 
