@@ -24,10 +24,10 @@
 | Token de granja | Operadores | ✅ Funciona | |
 | Regenerar token de granja | Operadores | ✅ Funciona | |
 | Lista de notificaciones | Notificaciones | ✅ Funciona | |
-| Marcar notificaciones como leídas | Notificaciones | ❌ Sin endpoint | El backend no tiene este endpoint aún |
+| Marcar notificaciones como leídas | Notificaciones | ✅ Funciona | `PATCH /v1/users/{userId}/notifications/read` |
 | Suscripción activa | Configuración | ✅ Funciona | Cruza `/v1/subscriptions/{id}` con `/v1/plans` |
-| Cambiar contraseña | Configuración | ❌ Sin endpoint | El backend no tiene este endpoint aún |
-| Editar datos del estanque | Detalle estanque | ❌ Sin endpoint | El backend no tiene `PUT /v1/ponds/{id}` |
+| Cambiar contraseña | Configuración | ✅ Funciona | `PATCH /v1/users/{id}/password` con `{ currentPassword, newPassword }` |
+| Editar datos del estanque | Detalle estanque | ✅ Funciona | `PUT /v1/ponds/{id}` con `{ name, species, volume }` |
 | Desasignar operador del estanque | Detalle estanque | ✅ Funciona | Botón en la tarjeta del operador asignado |
 | Exportar CSV de lecturas | Detalle estanque | ✅ Funciona | Descarga CSV del historial, deshabilitado si no hay datos |
 | Asignar operador al estanque | Detalle estanque | ✅ Funciona | Modal con lista de operadores disponibles |

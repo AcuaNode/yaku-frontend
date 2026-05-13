@@ -1,5 +1,6 @@
 import { http } from '../../lib/http'
 import { API_ENDPOINTS } from '../../config/api.config'
+import { getUserId } from '../../utils/token'
 import type { Operador, OperadorStats } from '../../domain/operador/Operador'
 
 interface UserResource {
@@ -31,9 +32,13 @@ async function fetchUsers(): Promise<UserResource[]> {
   return Array.isArray(data) ? (data as UserResource[]) : []
 }
 
-async function fetchFarms(): Promise<FarmResource[]> {
-  const { data } = await http.get<FarmResource[]>(API_ENDPOINTS.farms.base)
-  return Array.isArray(data) ? data : []
+async function fetchUserFarm(): Promise<FarmResource | null> {
+  const userId = getUserId()
+  const { data } = await http.get<Record<string, unknown>[] | unknown>(API_ENDPOINTS.farms.base)
+  if (!Array.isArray(data) || data.length === 0) return null
+  const farms = data as FarmResource[]
+  if (!userId) return farms[0]
+  return farms.find(f => Number(f.ownerId) === userId) ?? farms[0]
 }
 
 export const operadorService = {
@@ -64,13 +69,12 @@ export const operadorService = {
   },
 
   getFarmToken: async (): Promise<string> => {
-    const farms = await fetchFarms()
-    return farms[0]?.farmToken ?? ''
+    const farm = await fetchUserFarm()
+    return farm?.farmToken ?? ''
   },
 
   actualizarToken: async (): Promise<string> => {
-    const farms = await fetchFarms()
-    const farm = farms[0]
+    const farm = await fetchUserFarm()
     if (!farm) throw new Error('No se encontró ninguna granja')
     const { data } = await http.patch<FarmResource>(API_ENDPOINTS.farms.regenerateToken(farm.id))
     return data.farmToken ?? ''

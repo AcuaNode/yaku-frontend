@@ -62,10 +62,14 @@ export const notificacionService = {
   },
 
   marcarTodasLeidas: async (): Promise<void> => {
-    // No existe endpoint en backend — operación solo local
+    const userId = getUserId()
+    if (!userId) return
+    await http.patch(API_ENDPOINTS.users.markNotificationsRead(userId))
   },
 
   marcarLeida: async (_id: string): Promise<void> => {
-    // No existe endpoint en backend — operación solo local
+    const userId = getUserId()
+    if (!userId) return
+    await http.patch(API_ENDPOINTS.users.markNotificationsRead(userId))
   },
 }

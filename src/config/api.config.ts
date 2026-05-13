@@ -6,11 +6,13 @@ export const API_ENDPOINTS = {
     signup: '/v1/users/signup',
   },
   users: {
-    base:           '/v1/users',
-    byUsername:     '/v1/users/by-username',
-    availableRoles: '/v1/users/available-roles',
-    notifications:  (userId: number) => `/v1/users/${userId}/notifications`,
-    deviceTokens:   (userId: number) => `/v1/users/${userId}/device-tokens`,
+    base:                    '/v1/users',
+    byUsername:              '/v1/users/by-username',
+    availableRoles:          '/v1/users/available-roles',
+    notifications:           (userId: number) => `/v1/users/${userId}/notifications`,
+    markNotificationsRead:   (userId: number) => `/v1/users/${userId}/notifications/read`,
+    changePassword:          (userId: number) => `/v1/users/${userId}/password`,
+    deviceTokens:            (userId: number) => `/v1/users/${userId}/device-tokens`,
   },
   farms: {
     base:            '/v1/farms',

@@ -111,6 +111,8 @@ export default function ConfiguracionPage() {
   const [modoOscuro, setModoOscuro] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const [errorPassword, setErrorPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
   const [granjaId, setGranjaId] = useState<string>('—')
   const [suscripcion, setSuscripcion] = useState<ResolvedSuscripcion | null>(null)
 
@@ -144,10 +146,23 @@ export default function ConfiguracionPage() {
   const initials  = user ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase() : '?'
   const roleLabel = user?.role === 'ADMIN' ? t('configuracion.adminValue') : user?.role === 'OPERADOR' ? 'Operador' : user?.role ?? '—'
 
-  function handleActualizarPassword() {
-    setSuccessMsg(t('configuracion.passwordUpdated'))
-    setPasswordActual(''); setPasswordNueva(''); setPasswordConfirmar('')
-    setTimeout(() => setSuccessMsg(''), 3000)
+  async function handleActualizarPassword() {
+    setErrorPassword('')
+    if (!passwordNueva || !passwordActual) { setErrorPassword(t('configuracion.fillAllFields') || 'Completa todos los campos'); return }
+    if (passwordNueva !== passwordConfirmar) { setErrorPassword(t('configuracion.passwordMismatch') || 'Las contraseñas no coinciden'); return }
+    const userId = getUserId()
+    if (!userId) return
+    setSavingPassword(true)
+    try {
+      await http.patch(API_ENDPOINTS.users.changePassword(userId), { currentPassword: passwordActual, newPassword: passwordNueva })
+      setSuccessMsg(t('configuracion.passwordUpdated'))
+      setPasswordActual(''); setPasswordNueva(''); setPasswordConfirmar('')
+      setTimeout(() => setSuccessMsg(''), 3000)
+    } catch {
+      setErrorPassword(t('configuracion.passwordError') || 'Contraseña actual incorrecta')
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   const profileFields = [
@@ -289,14 +304,20 @@ export default function ConfiguracionPage() {
                   {successMsg}
                 </div>
               )}
+              {errorPassword && (
+                <div style={{ fontSize: '13px', color: '#ef4444', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 12px' }}>
+                  {errorPassword}
+                </div>
+              )}
 
               <button
                 onClick={handleActualizarPassword}
-                style={{ width: '100%', padding: '11px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: '#334155', cursor: 'pointer', marginTop: '4px' }}
-                onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                disabled={savingPassword}
+                style={{ width: '100%', padding: '11px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: '#334155', cursor: savingPassword ? 'not-allowed' : 'pointer', marginTop: '4px', opacity: savingPassword ? 0.6 : 1 }}
+                onMouseOver={e => { if (!savingPassword) e.currentTarget.style.backgroundColor = '#f1f5f9' }}
                 onMouseOut={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
               >
-                {t('configuracion.updatePassword')}
+                {savingPassword ? 'Guardando...' : t('configuracion.updatePassword')}
               </button>
             </div>
           </div>

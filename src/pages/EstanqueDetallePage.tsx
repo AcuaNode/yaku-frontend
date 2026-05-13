@@ -130,6 +130,12 @@ export default function EstanqueDetallePage() {
   const [errorIngest, setErrorIngest] = useState<string | null>(null)
   const [successIngest, setSuccessIngest] = useState(false)
 
+  // Modal: editar estanque
+  const [showEditar, setShowEditar] = useState(false)
+  const [editForm, setEditForm] = useState({ nombre: '', species: '', volume: '' })
+  const [editando, setEditando] = useState(false)
+  const [errorEditar, setErrorEditar] = useState<string | null>(null)
+
   // Modal: asignar operador
   const [showAsignar, setShowAsignar] = useState(false)
   const [operadoresDisponibles, setOperadoresDisponibles] = useState<UserOption[]>([])
@@ -234,6 +240,34 @@ export default function EstanqueDetallePage() {
     }
   }
 
+  function abrirEditar() {
+    setEditForm({
+      nombre: detalle?.nombre ?? '',
+      species: '',
+      volume: '',
+    })
+    setErrorEditar(null)
+    setShowEditar(true)
+  }
+
+  async function handleEditarEstanque() {
+    if (!editForm.nombre.trim()) { setErrorEditar('El nombre es requerido'); return }
+    setEditando(true); setErrorEditar(null)
+    try {
+      await http.put(API_ENDPOINTS.ponds.byId(pondId), {
+        name: editForm.nombre,
+        species: editForm.species || undefined,
+        volume: editForm.volume ? parseFloat(editForm.volume) : undefined,
+      })
+      setShowEditar(false)
+      refetch()
+    } catch {
+      setErrorEditar('No se pudo guardar los cambios. Intenta de nuevo.')
+    } finally {
+      setEditando(false)
+    }
+  }
+
   function exportarCSV() {
     if (!detalle || detalle.historico.length === 0) return
     const headers = 'Fecha,Temperatura (°C),pH,Oxígeno (mg/L),Estado'
@@ -305,6 +339,7 @@ export default function EstanqueDetallePage() {
         </div>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
           <button
+            onClick={abrirEditar}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '9px 16px', fontSize: '13px', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
             onMouseOver={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
             onMouseOut={e => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -589,6 +624,58 @@ export default function EstanqueDetallePage() {
                   style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#0f4c35', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: asignando ? 'not-allowed' : 'pointer', opacity: asignando ? 0.7 : 1 }}
                 >
                   {asignando ? 'Asignando...' : 'Asignar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: editar estanque */}
+      {showEditar && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: '0 0 20px' }}>{t('estanqueDetalle.editPond')}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '6px' }}>Nombre *</label>
+                <input
+                  value={editForm.nombre}
+                  onChange={e => setEditForm(f => ({ ...f, nombre: e.target.value }))}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', boxSizing: 'border-box' }}
+                  placeholder="Nombre del estanque"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '6px' }}>Especie</label>
+                <input
+                  value={editForm.species}
+                  onChange={e => setEditForm(f => ({ ...f, species: e.target.value }))}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', boxSizing: 'border-box' }}
+                  placeholder="ej. Trucha, Salmón"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '6px' }}>Volumen (m³)</label>
+                <input
+                  type="number"
+                  value={editForm.volume}
+                  onChange={e => setEditForm(f => ({ ...f, volume: e.target.value }))}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', boxSizing: 'border-box' }}
+                  placeholder="ej. 100"
+                />
+              </div>
+              {errorEditar && <p style={{ margin: 0, fontSize: '13px', color: '#ef4444' }}>{errorEditar}</p>}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button onClick={() => setShowEditar(false)} style={{ flex: 1, padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#64748b' }}>
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleEditarEstanque}
+                  disabled={editando}
+                  style={{ flex: 1, padding: '10px', backgroundColor: '#0f4c35', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: editando ? 'not-allowed' : 'pointer', color: '#fff', opacity: editando ? 0.7 : 1 }}
+                >
+                  {editando ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </div>
