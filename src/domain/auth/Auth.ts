@@ -9,6 +9,8 @@ export interface RegisterCredentials {
   lastName: string
   email: string
   password: string
+  role: 'ADMIN' | 'OPERATOR'
+  farmToken?: string
 }
 
 export interface User {

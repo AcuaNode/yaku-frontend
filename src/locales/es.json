@@ -53,7 +53,12 @@
     "signIn": "Iniciar Sesión",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "errorRequired": "Todos los campos son requeridos",
-    "errorRegister": "Error al registrar usuario"
+    "errorRegister": "Error al registrar usuario",
+    "role": "Rol",
+    "roleAdmin": "Administrador",
+    "roleOperator": "Operador",
+    "farmToken": "Token de Granja",
+    "farmTokenPlaceholder": "Ingresa el token de la granja"
   },
   "dashboard": {
     "activePonds": "ESTANQUES ACTIVOS",

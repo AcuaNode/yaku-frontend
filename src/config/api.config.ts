@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     base:            '/v1/farms',
     byId:            (id: number) => `/v1/farms/${id}`,
     regenerateToken: (id: number) => `/v1/farms/${id}/token`,
+    createFarmToken: (farmId: number) => `/v1/iam/farms/${farmId}/tokens`,
   },
   ponds: {
     base:      '/v1/ponds',

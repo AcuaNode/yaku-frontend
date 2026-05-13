@@ -53,7 +53,12 @@
     "signIn": "Sign In",
     "forgotPassword": "Forgot your password?",
     "errorRequired": "All fields are required",
-    "errorRegister": "Error registering user"
+    "errorRegister": "Error registering user",
+    "role": "Role",
+    "roleAdmin": "Administrator",
+    "roleOperator": "Operator",
+    "farmToken": "Farm Token",
+    "farmTokenPlaceholder": "Enter the farm token"
   },
   "dashboard": {
     "activePonds": "ACTIVE PONDS",

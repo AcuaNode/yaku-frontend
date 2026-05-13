@@ -98,7 +98,7 @@ export const authService = {
   register: async (data: RegisterCredentials): Promise<User> => {
     const { data: responseData } = await http.post<SignInResponse | string>(
       API_ENDPOINTS.auth.signup,
-      { ...data, role: 'ADMIN' }
+      { ...data }
     )
 
     const token = typeof responseData === 'string'

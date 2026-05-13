@@ -26,7 +26,7 @@ function AuthLangToggle() {
 }
 
 export default function RegisterPage() {
-  const [form, setForm] = useState<RegisterCredentials>({ username: '', firstName: '', lastName: '', email: '', password: '' })
+  const [form, setForm] = useState<RegisterCredentials>({ username: '', firstName: '', lastName: '', email: '', password: '', role: 'ADMIN', farmToken: '' })
   const [showPassword, setShowPassword] = useState(false)
   const { register, loading, error, setError } = useAuth()
   const { t } = useTranslation()
@@ -109,6 +109,51 @@ export default function RegisterPage() {
               </button>
             </div>
           </div>
+
+          <div>
+            <label style={labelStyle}>{t('register.role')}</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {(['ADMIN', 'OPERATOR'] as const).map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, role: r, farmToken: '' }))}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: `2px solid ${form.role === r ? '#38bdf8' : '#e2e8f0'}`,
+                    backgroundColor: form.role === r ? '#f0f9ff' : '#fff',
+                    color: form.role === r ? '#0284c7' : '#64748b',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {r === 'ADMIN' ? t('register.roleAdmin') : t('register.roleOperator')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.role === 'OPERATOR' && (
+            <div>
+              <label style={labelStyle}>{t('register.farmToken')}</label>
+              <div style={inputWrapper}>
+                <svg width="16" height="16" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder={t('register.farmTokenPlaceholder')}
+                  value={form.farmToken ?? ''}
+                  onChange={e => handleChange('farmToken', e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          )}
 
           {error && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', fontSize: '13px', borderRadius: '8px', padding: '10px 12px' }}>

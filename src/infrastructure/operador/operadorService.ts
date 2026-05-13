@@ -9,7 +9,7 @@ interface UserResource {
   email: string
   firstName: string
   lastName: string
-  role: string
+  roles: string[]
   createdAt?: string
 }
 
@@ -19,6 +19,13 @@ interface FarmResource {
   ownerId: number
   farmToken: string
   address: string
+}
+
+interface FarmTokenResource {
+  id: number
+  token: string
+  farmId: number
+  isUsed: boolean
 }
 
 const AVATAR_COLORS = ['#06b6d4', '#1e3a5f', '#0d9488', '#7c3aed', '#ea580c', '#db2777']
@@ -45,7 +52,7 @@ export const operadorService = {
   getAll: async (): Promise<Operador[]> => {
     const users = await fetchUsers()
     return users
-      .filter(u => u.role === 'OPERATOR')
+      .filter(u => u.roles?.includes('OPERATOR'))
       .map((u, i) => ({
         id:               String(u.id),
         userId:           `#USR-${String(u.id).padStart(4, '0')}`,
@@ -61,7 +68,7 @@ export const operadorService = {
 
   getStats: async (): Promise<OperadorStats> => {
     const users = await fetchUsers()
-    const operators = users.filter(u => u.role === 'OPERATOR')
+    const operators = users.filter(u => u.roles?.includes('OPERATOR'))
     return {
       total:              operators.length,
       crecimientoMensual: 0,
@@ -70,13 +77,15 @@ export const operadorService = {
 
   getFarmToken: async (): Promise<string> => {
     const farm = await fetchUserFarm()
-    return farm?.farmToken ?? ''
+    if (!farm) return ''
+    const { data } = await http.post<FarmTokenResource>(API_ENDPOINTS.farms.createFarmToken(farm.id))
+    return data.token ?? ''
   },
 
   actualizarToken: async (): Promise<string> => {
     const farm = await fetchUserFarm()
     if (!farm) throw new Error('No se encontró ninguna granja')
-    const { data } = await http.patch<FarmResource>(API_ENDPOINTS.farms.regenerateToken(farm.id))
-    return data.farmToken ?? ''
+    const { data } = await http.post<FarmTokenResource>(API_ENDPOINTS.farms.createFarmToken(farm.id))
+    return data.token ?? ''
   },
 }
