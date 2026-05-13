@@ -35,7 +35,11 @@ function formatDate(iso: string): string {
 }
 
 async function fetchUsers(): Promise<UserResource[]> {
-  const { data } = await http.get<UserResource[] | unknown>(API_ENDPOINTS.users.base)
+  const farm = await fetchUserFarm()
+  const url = farm
+    ? `${API_ENDPOINTS.users.base}?farmId=${farm.id}`
+    : API_ENDPOINTS.users.base
+  const { data } = await http.get<UserResource[] | unknown>(url)
   return Array.isArray(data) ? (data as UserResource[]) : []
 }
 
