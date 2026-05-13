@@ -55,6 +55,12 @@ export interface HistoricoPoint {
   Oxígeno: number
 }
 
+export interface OperadorAsignado {
+  id: string
+  nombre: string
+  email: string
+}
+
 export interface EstanqueDetalleData {
   id: string
   nombre: string
@@ -67,4 +73,5 @@ export interface EstanqueDetalleData {
   }
   equipos: EquipoAsignado[]
   historico: HistoricoPoint[]
+  operadorAsignado: OperadorAsignado | null
 }

@@ -200,17 +200,21 @@ export const estanqueService = {
 
   getDetalle: async (id: string): Promise<EstanqueDetalleData> => {
     const pondId = parseInt(id, 10)
-    const [pondRes, statusRes, historicalRes, equipmentRes] = await Promise.all([
+    const [pondRes, statusRes, historicalRes, equipmentRes, usersRes] = await Promise.all([
       http.get<PondResource>(API_ENDPOINTS.ponds.byId(pondId)),
       http.get<SensorReading[]>(API_ENDPOINTS.telemetry.status(pondId)).catch(() => ({ data: [] as SensorReading[] })),
       http.get<MeasurementAggregate[]>(API_ENDPOINTS.telemetry.historical(pondId)).catch(() => ({ data: [] as MeasurementAggregate[] })),
       http.get<EquipmentResource[]>(API_ENDPOINTS.equipment.base),
+      http.get<{ id: number; firstName: string; lastName: string; email: string }[]>(API_ENDPOINTS.users.base).catch(() => ({ data: [] as { id: number; firstName: string; lastName: string; email: string }[] })),
     ])
 
     const pond = pondRes.data
     const readings = statusRes.data
     const { temp, ph, o2 } = extractReadings(readings)
     const pondEquipment = equipmentRes.data.filter(e => e.pondId === pondId)
+    const assignedUser = pond.assignedFishFarmerId
+      ? (usersRes.data.find(u => u.id === pond.assignedFishFarmerId) ?? null)
+      : null
 
     return {
       id: String(pond.id),
@@ -251,6 +255,11 @@ export const estanqueService = {
         codigo: e.physicalCode ?? '',
       })),
       historico: mapHistorical(historicalRes.data),
+      operadorAsignado: assignedUser ? {
+        id: String(assignedUser.id),
+        nombre: `${assignedUser.firstName} ${assignedUser.lastName}`.trim(),
+        email: assignedUser.email,
+      } : null,
     }
   },
 }

@@ -7,7 +7,7 @@ import GaugeChart from '../components/GaugeChart'
 import { useEstanqueDetalle } from '../hooks/useEstanqueDetalle'
 import { http } from '../lib/http'
 import { API_ENDPOINTS } from '../config/api.config'
-import type { EquipoAsignado, TelemetriaLectura } from '../domain/estanque/Estanque'
+import type { EquipoAsignado, TelemetriaLectura, OperadorAsignado } from '../domain/estanque/Estanque'
 
 const TIPO_STYLE: Record<string, { bg: string; color: string }> = {
   SENSOR: { bg: '#0d1b2e', color: '#fff' },
@@ -58,6 +58,49 @@ function TelemetriaCard({ label, lectura }: TelemetriaCardProps) {
 
 interface EquipmentOption { id: number; name: string; physicalCode: string }
 interface EquipmentResource { id: number; pondId: number; type: string; status: string; name: string; physicalCode: string }
+interface UserOption { id: number; firstName: string; lastName: string; email: string; role: string }
+
+function OperadorCard({ operador, desasignando, onAsignar, onDesasignar }: {
+  operador: OperadorAsignado | null
+  desasignando: boolean
+  onAsignar: () => void
+  onDesasignar: (id: string) => void
+}) {
+  return (
+    <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Operador</h2>
+        {!operador && (
+          <button onClick={onAsignar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#38bdf8', fontSize: '13px', fontWeight: 600 }}>
+            + Asignar
+          </button>
+        )}
+      </div>
+      {!operador ? (
+        <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Sin operador asignado</p>
+      ) : (
+        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '10px', padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>
+              {operador.nombre.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{operador.nombre}</div>
+              <div style={{ fontSize: '11px', color: '#64748b' }}>{operador.email}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => onDesasignar(operador.id)}
+            disabled={desasignando}
+            style={{ width: '100%', padding: '7px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#ef4444', fontSize: '12px', fontWeight: 600, cursor: desasignando ? 'not-allowed' : 'pointer', opacity: desasignando ? 0.6 : 1 }}
+          >
+            {desasignando ? 'Desasignando...' : 'Desasignar'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface IngestForm {
   temperature: string
@@ -86,6 +129,14 @@ export default function EstanqueDetallePage() {
   const [ingesting, setIngesting] = useState(false)
   const [errorIngest, setErrorIngest] = useState<string | null>(null)
   const [successIngest, setSuccessIngest] = useState(false)
+
+  // Modal: asignar operador
+  const [showAsignar, setShowAsignar] = useState(false)
+  const [operadoresDisponibles, setOperadoresDisponibles] = useState<UserOption[]>([])
+  const [selectedOperador, setSelectedOperador] = useState('')
+  const [asignando, setAsignando] = useState(false)
+  const [errorAsignar, setErrorAsignar] = useState<string | null>(null)
+  const [desasignando, setDesasignando] = useState(false)
 
   async function abrirVincular() {
     setErrorVincular(null)
@@ -143,6 +194,63 @@ export default function EstanqueDetallePage() {
     } finally {
       setIngesting(false)
     }
+  }
+
+  async function abrirAsignar() {
+    setErrorAsignar(null)
+    setSelectedOperador('')
+    try {
+      const { data } = await http.get<UserOption[]>(API_ENDPOINTS.users.base)
+      setOperadoresDisponibles(Array.isArray(data) ? data.filter(u => u.role === 'OPERATOR') : [])
+    } catch {
+      setOperadoresDisponibles([])
+    }
+    setShowAsignar(true)
+  }
+
+  async function handleAsignar() {
+    if (!selectedOperador) { setErrorAsignar('Selecciona un operador'); return }
+    setAsignando(true); setErrorAsignar(null)
+    try {
+      await http.post(API_ENDPOINTS.ponds.assign(pondId), { operatorId: parseInt(selectedOperador, 10) })
+      setShowAsignar(false)
+      refetch()
+    } catch {
+      setErrorAsignar('No se pudo asignar el operador. Intenta de nuevo.')
+    } finally {
+      setAsignando(false)
+    }
+  }
+
+  async function handleDesasignar(operadorId: string) {
+    setDesasignando(true)
+    try {
+      await http.delete(API_ENDPOINTS.ponds.deassign(pondId, parseInt(operadorId, 10)))
+      refetch()
+    } catch {
+      // silencioso — refetch de todas formas
+    } finally {
+      setDesasignando(false)
+    }
+  }
+
+  function exportarCSV() {
+    if (!detalle || detalle.historico.length === 0) return
+    const headers = 'Fecha,Temperatura (°C),pH,Oxígeno (mg/L),Estado'
+    const rows = detalle.historico.map(row => {
+      const s = rowEstado(row.Temperatura, row.pH, row.Oxígeno)
+      return `${row.tiempo},${row.Temperatura},${row.pH},${row.Oxígeno},${s.text}`
+    })
+    const csv = [headers, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${detalle.nombre}_historico.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (loading) {
@@ -263,23 +371,36 @@ export default function EstanqueDetallePage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Equipos Asignados */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.assignedEquipment')}</h2>
-            <button
-              onClick={abrirVincular}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#38bdf8', fontSize: '13px', fontWeight: 600 }}
-            >
-              {t('estanqueDetalle.linkButton')}
-            </button>
+        {/* Columna derecha */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Equipos Asignados */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.assignedEquipment')}</h2>
+              <button
+                onClick={abrirVincular}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#38bdf8', fontSize: '13px', fontWeight: 600 }}
+              >
+                {t('estanqueDetalle.linkButton')}
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {detalle.equipos.length === 0
+                ? <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Sin equipos asignados</p>
+                : detalle.equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} />)
+              }
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {detalle.equipos.length === 0
-              ? <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>Sin equipos asignados</p>
-              : detalle.equipos.map(eq => <EquipoCard key={eq.id} equipo={eq} />)
-            }
-          </div>
+
+          {/* Operador Asignado */}
+          <OperadorCard
+            operador={detalle.operadorAsignado}
+            desasignando={desasignando}
+            onAsignar={abrirAsignar}
+            onDesasignar={handleDesasignar}
+          />
+
         </div>
       </div>
 
@@ -292,8 +413,9 @@ export default function EstanqueDetallePage() {
           <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('estanqueDetalle.readingHistory')}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
-              onClick={e => { e.stopPropagation() }}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}
+              onClick={e => { e.stopPropagation(); exportarCSV() }}
+              disabled={!detalle || detalle.historico.length === 0}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'transparent', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', opacity: (!detalle || detalle.historico.length === 0) ? 0.4 : 1 }}
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -424,6 +546,49 @@ export default function EstanqueDetallePage() {
                   style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#0f4c35', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: ingesting ? 'not-allowed' : 'pointer', opacity: ingesting ? 0.7 : 1 }}
                 >
                   {ingesting ? 'Guardando...' : t('common.save')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Asignar Operador */}
+      {showAsignar && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '32px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Asignar Operador</h2>
+              <button onClick={() => setShowAsignar(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '22px', lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>Operador disponible</label>
+                <select
+                  value={selectedOperador}
+                  onChange={e => setSelectedOperador(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', backgroundColor: '#f8fafc', color: '#334155' }}
+                >
+                  <option value="">Seleccionar operador...</option>
+                  {operadoresDisponibles.map(op => (
+                    <option key={op.id} value={String(op.id)}>{op.firstName} {op.lastName} — {op.email}</option>
+                  ))}
+                </select>
+                {operadoresDisponibles.length === 0 && (
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '6px 0 0' }}>No hay operadores registrados.</p>
+                )}
+              </div>
+              {errorAsignar && <p style={{ color: '#ef4444', fontSize: '13px', margin: 0 }}>{errorAsignar}</p>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button onClick={() => setShowAsignar(false)} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'transparent', fontSize: '13px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleAsignar}
+                  disabled={asignando || !selectedOperador}
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#0f4c35', color: '#fff', fontSize: '13px', fontWeight: 700, cursor: asignando ? 'not-allowed' : 'pointer', opacity: asignando ? 0.7 : 1 }}
+                >
+                  {asignando ? 'Asignando...' : 'Asignar'}
                 </button>
               </div>
             </div>
